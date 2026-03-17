@@ -1,0 +1,1362 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Polaroid Generator 3.0</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Patrick+Hand&family=Special+Elite&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/exifr/dist/lite.umd.js"></script>
+  <style>
+    :root {
+      --bg: #efe7db;
+      --bg-2: #f7f3ec;
+      --panel: rgba(255,255,255,.72);
+      --panel-solid: #fffdf9;
+      --line: rgba(55, 65, 81, .12);
+      --text: #1f2937;
+      --muted: #6b7280;
+      --accent: #111827;
+      --accent-soft: rgba(17,24,39,.08);
+      --shadow: 0 22px 50px rgba(31, 41, 55, .12);
+      --radius-xl: 28px;
+      --radius-lg: 20px;
+      --radius-md: 14px;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: Inter, system-ui, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(255,255,255,.65), transparent 30%),
+        radial-gradient(circle at bottom right, rgba(255,255,255,.45), transparent 24%),
+        linear-gradient(180deg, #f4ede2 0%, #ebe2d4 100%);
+    }
+
+    .shell {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    .hero {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .hero-copy h1 {
+      margin: 0;
+      font-size: clamp(2rem, 3vw, 3.4rem);
+      line-height: .98;
+      letter-spacing: -.04em;
+    }
+
+    .hero-copy p {
+      margin: 10px 0 0;
+      color: var(--muted);
+      max-width: 760px;
+      line-height: 1.55;
+      font-size: 1rem;
+    }
+
+    .badge-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 14px;
+    }
+
+    .badge {
+      padding: 9px 12px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.55);
+      border: 1px solid rgba(255,255,255,.75);
+      box-shadow: 0 10px 22px rgba(0,0,0,.04);
+      color: #374151;
+      font-size: .82rem;
+      font-weight: 600;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 480px minmax(0, 1fr) 320px;
+      gap: 20px;
+      align-items: start;
+    }
+
+    .panel {
+      background: var(--panel);
+      backdrop-filter: blur(14px);
+      border: 1px solid rgba(255,255,255,.75);
+      box-shadow: var(--shadow);
+      border-radius: var(--radius-xl);
+      overflow: hidden;
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 18px 20px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255,255,255,.45);
+    }
+
+    .panel-header h2,
+    .panel-header h3 {
+      margin: 0;
+      font-size: 1rem;
+      letter-spacing: -.02em;
+    }
+
+    .panel-body {
+      padding: 18px;
+      display: grid;
+      gap: 18px;
+    }
+
+    .stack { display: grid; gap: 14px; }
+    .grid-2 { display: grid; gap: 14px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3 { display: grid; gap: 12px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+    .field { display: grid; gap: 8px; }
+    .field label {
+      font-size: .88rem;
+      font-weight: 700;
+      color: #374151;
+    }
+
+    input[type="text"],
+    input[type="number"],
+    input[type="range"],
+    textarea,
+    select,
+    input[type="file"] {
+      width: 100%;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.86);
+      border-radius: 14px;
+      color: var(--text);
+      font: inherit;
+    }
+
+    input[type="text"],
+    input[type="number"],
+    textarea,
+    select,
+    input[type="file"] {
+      padding: 12px 13px;
+    }
+
+    input[type="range"] {
+      padding: 0;
+      height: 38px;
+      background: transparent;
+    }
+
+    textarea {
+      min-height: 92px;
+      resize: vertical;
+    }
+
+    .dropzone {
+      border: 1.5px dashed rgba(17,24,39,.16);
+      background: linear-gradient(180deg, rgba(255,255,255,.75), rgba(255,255,255,.55));
+      border-radius: 24px;
+      padding: 18px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .dropzone-top {
+      display: flex;
+      gap: 14px;
+      align-items: center;
+    }
+
+    .drop-ico {
+      width: 46px;
+      height: 46px;
+      border-radius: 16px;
+      display: grid;
+      place-items: center;
+      background: var(--accent-soft);
+      font-size: 1.3rem;
+    }
+
+    .dropzone strong { display:block; font-size:.98rem; }
+    .dropzone span { color: var(--muted); font-size:.86rem; line-height:1.4; }
+
+    .toggle-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .toggle, .tag-chip {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.82);
+      border-radius: 14px;
+      padding: 11px 12px;
+      min-height: 48px;
+    }
+
+    .toggle input, .tag-chip input { margin: 0; }
+    .toggle span, .tag-chip span { font-size: .9rem; font-weight: 600; color: #374151; }
+
+    .tag-list {
+      display: grid;
+      gap: 10px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .action-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    button {
+      appearance: none;
+      border: 0;
+      border-radius: 999px;
+      padding: 12px 16px;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform .15s ease, opacity .15s ease, box-shadow .15s ease;
+    }
+
+    button:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 10px 20px rgba(0,0,0,.08);
+    }
+
+    button:disabled { opacity: .5; cursor: not-allowed; }
+    .btn-primary { background: var(--accent); color: white; }
+    .btn-secondary { background: rgba(255,255,255,.9); color: var(--text); border: 1px solid var(--line); }
+    .btn-ghost { background: transparent; color: var(--muted); border: 1px solid transparent; }
+
+    .canvas-wrap {
+      padding: 20px;
+      display: grid;
+      gap: 16px;
+    }
+
+    .stage {
+      background: linear-gradient(180deg, #ece4d7, #ddd1c0);
+      border-radius: 28px;
+      padding: 20px;
+      box-shadow: inset 0 0 0 1px rgba(0,0,0,.04);
+      position: relative;
+      overflow: hidden;
+      min-height: 760px;
+    }
+
+    .stage::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(circle at 20% 10%, rgba(255,255,255,.4), transparent 18%),
+        radial-gradient(circle at 80% 90%, rgba(255,255,255,.28), transparent 20%);
+      pointer-events: none;
+    }
+
+    canvas {
+      position: relative;
+      width: 100%;
+      height: auto;
+      display: block;
+      border-radius: 22px;
+      background: transparent;
+    }
+
+    .quick-styles {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0,1fr));
+      gap: 10px;
+    }
+
+    .preset {
+      border-radius: 18px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.72);
+      text-align: left;
+      font-size: .86rem;
+      line-height: 1.25;
+      color: var(--text);
+    }
+
+    .preset small { display:block; color:var(--muted); margin-top:4px; }
+
+    .stat-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .stat {
+      border-radius: 16px;
+      background: rgba(255,255,255,.78);
+      border: 1px solid var(--line);
+      padding: 12px 13px;
+    }
+
+    .stat b {
+      display: block;
+      font-size: .76rem;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: var(--muted);
+      margin-bottom: 5px;
+    }
+
+    .stat span {
+      display: block;
+      font-size: .92rem;
+      line-height: 1.4;
+      overflow-wrap: anywhere;
+    }
+
+    .mini-note {
+      padding: 12px 13px;
+      border-radius: 16px;
+      background: rgba(17,24,39,.05);
+      color: #4b5563;
+      font-size: .86rem;
+      line-height: 1.5;
+    }
+
+    .footer-actions {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 4px;
+    }
+
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+    @media (max-width: 1220px) {
+      .layout { grid-template-columns: 1fr; }
+      .stage { min-height: unset; }
+    }
+
+    @media (max-width: 720px) {
+      .grid-2, .grid-3, .tag-list, .toggle-grid, .quick-styles { grid-template-columns: 1fr; }
+      .shell { padding: 16px; }
+      .panel-header { padding: 16px; }
+      .panel-body, .canvas-wrap { padding: 14px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <section class="hero">
+      <div class="hero-copy">
+        <h1>Polaroid Generator 3.0</h1>
+        <p>Uma experiência mais elegante para criar polaroids com EXIF, localização convertida, suporte a link do Google Photos, modo WhatsApp, presets de estilo e exportação pronta para compartilhar.</p>
+        <div class="badge-row">
+          <span class="badge">Default retrô incluído</span>
+          <span class="badge">Google Photos + upload</span>
+          <span class="badge">OpenStreetMap / Google Maps</span>
+          <span class="badge">Canvas em tempo real</span>
+        </div>
+      </div>
+    </section>
+
+    <main class="layout">
+      <section class="panel">
+        <div class="panel-header">
+          <h2>Entrada & composição</h2>
+          <button id="resetBtn" class="btn-ghost" type="button">Resetar</button>
+        </div>
+        <div class="panel-body">
+          <div class="dropzone">
+            <div class="dropzone-top">
+              <div class="drop-ico">📷</div>
+              <div>
+                <strong>Comece por um arquivo local</strong>
+                <span>JPEG costuma preservar EXIF melhor. Imagens reenviadas por apps podem perder metadados.</span>
+              </div>
+            </div>
+            <input id="imageInput" type="file" accept="image/*">
+          </div>
+
+          <div class="stack">
+            <div class="field">
+              <label for="googlePhotosUrl">Ou abra via link do Google Photos</label>
+              <input id="googlePhotosUrl" type="text" placeholder="Cole um link público ou um link direto da imagem">
+            </div>
+            <div class="grid-2">
+              <div class="field">
+                <label for="linkResolverMode">Resolver link</label>
+                <select id="linkResolverMode">
+                  <option value="auto" selected>Automático</option>
+                  <option value="direct">Assumir link direto</option>
+                  <option value="page">Extrair da página compartilhada</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="corsProxyUrl">Proxy CORS opcional</label>
+                <input id="corsProxyUrl" type="text" placeholder="Ex.: https://cors.isomorphic-git.org/">
+              </div>
+            </div>
+            <div class="action-row">
+              <button id="loadFromUrlBtn" class="btn-secondary" type="button">Abrir do link</button>
+            </div>
+          </div>
+
+          <div class="toggle-grid">
+            <label class="toggle"><input id="isWhatsappImage" type="checkbox"><span>Foto vinda do WhatsApp</span></label>
+            <label class="toggle"><input id="showTape" type="checkbox" checked><span>Adicionar fita decorativa</span></label>
+            <label class="toggle"><input id="effectSepia" type="checkbox"><span>Filtro vintage sépia</span></label>
+            <label class="toggle"><input id="effectGrain" type="checkbox"><span>Textura de desgaste</span></label>
+            <label class="toggle"><input id="effectStamp" type="checkbox"><span>Carimbo retrô</span></label>
+            <label class="toggle"><input id="effectDust" type="checkbox"><span>Poeira de filme</span></label>
+          </div>
+
+          <div class="stack">
+            <div class="field">
+              <label>Tags de metadados visíveis</label>
+              <div class="tag-list">
+                <label class="tag-chip"><input type="checkbox" value="DateTimeOriginal" checked><span>Data</span></label>
+                <label class="tag-chip"><input type="checkbox" value="ResolvedLocation" checked><span>Localização</span></label>
+                <label class="tag-chip"><input type="checkbox" value="Model" checked><span>Câmera</span></label>
+                <label class="tag-chip"><input type="checkbox" value="LensModel"><span>Lente</span></label>
+                <label class="tag-chip"><input type="checkbox" value="ISO" checked><span>ISO</span></label>
+                <label class="tag-chip"><input type="checkbox" value="FNumber" checked><span>Abertura</span></label>
+                <label class="tag-chip"><input type="checkbox" value="ExposureTime" checked><span>Exposição</span></label>
+                <label class="tag-chip"><input type="checkbox" value="FocalLength"><span>Focal</span></label>
+                <label class="tag-chip"><input type="checkbox" value="GPS"><span>GPS bruto</span></label>
+                <label class="tag-chip"><input type="checkbox" value="Make"><span>Fabricante</span></label>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid-2">
+            <div class="field">
+              <label for="titleText">Título da polaroid</label>
+              <input id="titleText" type="text" value="Minha Polaroid">
+            </div>
+            <div class="field">
+              <label for="fontSelect">Estilo da tipografia</label>
+              <select id="fontSelect">
+                <option value="default" selected>Default retrô</option>
+                <option value="hand">Handwriting</option>
+                <option value="type">Typewriter</option>
+                <option value="clean">Minimal clean</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="customText">Texto manual opcional</label>
+            <textarea id="customText" placeholder="Ex.: Fim de tarde em Lisboa • café, filme e caminhada"></textarea>
+          </div>
+
+          <div class="grid-3">
+            <div class="field">
+              <label for="rotation">Inclinação</label>
+              <input id="rotation" type="range" min="-15" max="15" step="1" value="-4">
+            </div>
+            <div class="field">
+              <label for="frameTone">Tom da moldura</label>
+              <select id="frameTone">
+                <option value="warm" selected>Warm ivory</option>
+                <option value="white">Classic white</option>
+                <option value="cream">Soft cream</option>
+                <option value="charcoal">Dark frame</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="locationFormat">Formato da localização</label>
+              <select id="locationFormat">
+                <option value="short" selected>Cidade, estado, país</option>
+                <option value="medium">Bairro, cidade, estado, país</option>
+                <option value="full">Endereço completo</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="grid-2">
+            <div class="field">
+              <label for="geoProvider">Serviço de geolocalização</label>
+              <select id="geoProvider">
+                <option value="none">Não buscar localização</option>
+                <option value="osm" selected>OpenStreetMap / Nominatim</option>
+                <option value="google">Google Maps Geocoding</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="googleApiKey">Google Maps API Key</label>
+              <input id="googleApiKey" type="text" placeholder="Necessária se usar Google Maps">
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-header">
+          <h2>Preview ao vivo</h2>
+          <div class="action-row">
+            <button id="generateBtn" class="btn-primary" type="button">Renderizar</button>
+            <button id="downloadBtn" class="btn-secondary" type="button" disabled>Baixar PNG</button>
+          </div>
+        </div>
+        <div class="canvas-wrap">
+          <div class="quick-styles">
+            <button class="preset" type="button" data-preset="classic">Classic <small>equilibrado e limpo</small></button>
+            <button class="preset" type="button" data-preset="scrapbook">Scrapbook <small>fita + handwriting</small></button>
+            <button class="preset" type="button" data-preset="cinema">Cinema <small>dark + stamp</small></button>
+            <button class="preset" type="button" data-preset="summer">Summer <small>leve e quente</small></button>
+          </div>
+          <div class="stage">
+            <canvas id="canvas" width="1400" height="1700"></canvas>
+          </div>
+          <div class="footer-actions">
+            <div class="mini-note">Dica: a fonte retrô já vem ativa por padrão. Os efeitos são opcionais e podem ser combinados.</div>
+            <div class="mini-note mono" id="statusText">Aguardando imagem…</div>
+          </div>
+        </div>
+      </section>
+
+      <aside class="panel">
+        <div class="panel-header">
+          <h3>Inspector</h3>
+          <span class="badge" id="sourceBadge">sem fonte</span>
+        </div>
+        <div class="panel-body">
+          <div class="stat-list" id="metadataStats">
+            <div class="stat"><b>Status</b><span>Nenhuma imagem carregada.</span></div>
+          </div>
+          <div class="mini-note" id="hintBox">A versão 3.0 tenta transformar a experiência em um mini estúdio: presets rápidos, composição retrô, moldura temática e controles suaves.</div>
+        </div>
+      </aside>
+    </main>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+
+    const imageInput = document.getElementById('imageInput');
+    const googlePhotosUrl = document.getElementById('googlePhotosUrl');
+    const loadFromUrlBtn = document.getElementById('loadFromUrlBtn');
+    const linkResolverMode = document.getElementById('linkResolverMode');
+    const corsProxyUrl = document.getElementById('corsProxyUrl');
+    const isWhatsappImage = document.getElementById('isWhatsappImage');
+    const showTape = document.getElementById('showTape');
+    const effectSepia = document.getElementById('effectSepia');
+    const effectGrain = document.getElementById('effectGrain');
+    const effectStamp = document.getElementById('effectStamp');
+    const effectDust = document.getElementById('effectDust');
+    const titleText = document.getElementById('titleText');
+    const fontSelect = document.getElementById('fontSelect');
+    const customText = document.getElementById('customText');
+    const rotation = document.getElementById('rotation');
+    const frameTone = document.getElementById('frameTone');
+    const locationFormat = document.getElementById('locationFormat');
+    const geoProvider = document.getElementById('geoProvider');
+    const googleApiKey = document.getElementById('googleApiKey');
+    const generateBtn = document.getElementById('generateBtn');
+    const downloadBtn = document.getElementById('downloadBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const metadataStats = document.getElementById('metadataStats');
+    const statusText = document.getElementById('statusText');
+    const sourceBadge = document.getElementById('sourceBadge');
+    const hintBox = document.getElementById('hintBox');
+
+    let selectedFile = null;
+    let loadedImage = null;
+    let exifData = {};
+    let resolvedLocation = null;
+
+    const tagInputs = Array.from(document.querySelectorAll('.tag-list input[type="checkbox"]'));
+    const presetButtons = Array.from(document.querySelectorAll('[data-preset]'));
+
+    function setStatus(text) {
+      statusText.textContent = text;
+    }
+
+    function framePalette() {
+      const tone = frameTone.value;
+      if (tone === 'white') return { frame: '#ffffff', inner: '#f8f8f8', paper: '#f4f4f4', ink: '#111827' };
+      if (tone === 'cream') return { frame: '#fff7ec', inner: '#f6eddc', paper: '#efe2cc', ink: '#2f2417' };
+      if (tone === 'charcoal') return { frame: '#242428', inner: '#1b1b1f', paper: '#2c2d32', ink: '#f8fafc' };
+      return { frame: '#fffaf4', inner: '#f4eee5', paper: '#efe6d8', ink: '#1f2937' };
+    }
+
+    function getCurrentSourceName() {
+      return selectedFile?.name || loadedImage?.dataset?.sourceName || '';
+    }
+
+    function normalizeProxyUrl(base, targetUrl) {
+      const trimmed = (base || '').trim();
+      if (!trimmed) return targetUrl;
+      return `${trimmed.replace(/\/?$/, '/')}${targetUrl}`;
+    }
+
+    function isLikelyDirectImageUrl(url) {
+      return /googleusercontent\.com|\.jpg($|\?)|\.jpeg($|\?)|\.png($|\?)|\.webp($|\?)/i.test(url);
+    }
+
+    async function fetchTextWithOptionalProxy(url) {
+      const finalUrl = normalizeProxyUrl(corsProxyUrl.value, url);
+      const response = await fetch(finalUrl, {
+        headers: { Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8' }
+      });
+      if (!response.ok) throw new Error(`Falha ao ler a página do link. HTTP ${response.status}.`);
+      return response.text();
+    }
+
+    function extractImageUrlFromSharedHtml(html) {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
+      const candidates = [
+        doc.querySelector('meta[property="og:image"]')?.content,
+        doc.querySelector('meta[name="twitter:image"]')?.content,
+        doc.querySelector('link[rel="image_src"]')?.href
+      ].filter(Boolean);
+      if (candidates.length) return candidates[0];
+      const raw = html.match(/https:\/\/lh[0-9]+\.googleusercontent\.com\/[^"'\s<)]+/i);
+      return raw?.[0] || null;
+    }
+
+    async function loadHtmlSharedImageUrl(url) {
+      const html = await fetchTextWithOptionalProxy(url);
+      const extracted = extractImageUrlFromSharedHtml(html);
+      if (!extracted) throw new Error('Não foi possível extrair o link da imagem da página compartilhada.');
+      return extracted;
+    }
+
+    async function resolveGooglePhotosImageUrl(url) {
+      const cleanUrl = (url || '').trim();
+      if (!cleanUrl) throw new Error('Cole um link para continuar.');
+      if (linkResolverMode.value === 'direct') return cleanUrl;
+      if (linkResolverMode.value === 'page') return loadHtmlSharedImageUrl(cleanUrl);
+      if (isLikelyDirectImageUrl(cleanUrl)) return cleanUrl;
+      return loadHtmlSharedImageUrl(cleanUrl);
+    }
+
+    async function loadImageFromUrl(url) {
+      const resolvedUrl = await resolveGooglePhotosImageUrl(url);
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.referrerPolicy = 'no-referrer';
+        img.onload = () => resolve({ img, resolvedUrl });
+        img.onerror = () => reject(new Error('O navegador não conseguiu carregar a imagem a partir do link informado.'));
+        img.src = resolvedUrl;
+      });
+    }
+
+    function formatExposure(value) {
+      if (!value) return null;
+      if (typeof value === 'number') {
+        if (value >= 1) return `${value}s`;
+        const inv = Math.round(1 / value);
+        return `1/${inv}s`;
+      }
+      return String(value);
+    }
+
+    function formatDate(value) {
+      if (!value) return null;
+      if (value instanceof Date && !isNaN(value)) {
+        return new Intl.DateTimeFormat('pt-BR', { dateStyle: 'medium', timeStyle: 'short' }).format(value);
+      }
+      if (typeof value === 'string') {
+        return value.replace(/^([0-9]{4}):([0-9]{2}):([0-9]{2})/, '$3/$2/$1');
+      }
+      return String(value);
+    }
+
+    function formatDateOnly(date) {
+      if (!(date instanceof Date) || isNaN(date)) return null;
+      return new Intl.DateTimeFormat('pt-BR', { dateStyle: 'medium' }).format(date);
+    }
+
+    function parseWhatsappDateFromFilename(filename) {
+      if (!filename) return null;
+      const patterns = [
+        /(?:IMG|VID|PHOTO|AUD)-?(\d{4})(\d{2})(\d{2})-(?:WA|WhatsApp)/i,
+        /WhatsApp\s+Image\s+(\d{4})-(\d{2})-(\d{2})\s+at/i,
+        /(\d{4})(\d{2})(\d{2})[_-]?WA\d+/i,
+        /(\d{4})-(\d{2})-(\d{2})/i
+      ];
+      for (const pattern of patterns) {
+        const match = filename.match(pattern);
+        if (!match) continue;
+        const dt = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+        if (!isNaN(dt)) return dt;
+      }
+      return null;
+    }
+
+    function getEffectiveDate(data, filename) {
+      if (isWhatsappImage.checked) {
+        const inferred = parseWhatsappDateFromFilename(filename);
+        return inferred ? formatDateOnly(inferred) : 'Data desconhecida';
+      }
+      return formatDate(data.DateTimeOriginal || data.CreateDate || data.ModifyDate) || 'Sem data';
+    }
+
+    function formatFNumber(value) {
+      if (!value) return null;
+      return `f/${Number(value).toFixed(1).replace('.0', '')}`;
+    }
+
+    function formatFocalLength(value) {
+      if (!value) return null;
+      return `${Math.round(Number(value))}mm`;
+    }
+
+    function formatGPS(lat, lon) {
+      if (typeof lat !== 'number' || typeof lon !== 'number') return null;
+      return `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
+    }
+
+    function firstNonEmpty(...values) {
+      return values.find(value => typeof value === 'string' && value.trim()) || null;
+    }
+
+    function formatResolvedLocation(location, mode) {
+      if (isWhatsappImage.checked) return 'Localização desconhecida';
+      if (!location || location.error) return null;
+      if (mode === 'full') return firstNonEmpty(location.formattedAddress, location.displayName, location.label);
+      const city = firstNonEmpty(location.city, location.town, location.village, location.municipality, location.county);
+      const state = firstNonEmpty(location.state, location.region);
+      const country = firstNonEmpty(location.country);
+      const suburb = firstNonEmpty(location.suburb, location.neighbourhood, location.borough);
+      const shortParts = [city, state, country].filter(Boolean);
+      const mediumParts = [suburb, city, state, country].filter(Boolean);
+      if (mode === 'medium' && mediumParts.length) return mediumParts.join(', ');
+      if (shortParts.length) return shortParts.join(', ');
+      return firstNonEmpty(location.formattedAddress, location.displayName, location.label);
+    }
+
+    async function reverseGeocodeOSM(lat, lon) {
+      const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&zoom=18&addressdetails=1`;
+      const response = await fetch(url, { headers: { Accept: 'application/json' } });
+      if (!response.ok) throw new Error('Falha ao consultar OpenStreetMap/Nominatim.');
+      const data = await response.json();
+      const address = data.address || {};
+      return {
+        provider: 'OpenStreetMap',
+        displayName: data.display_name || null,
+        formattedAddress: data.display_name || null,
+        label: data.name || null,
+        city: address.city || null,
+        town: address.town || null,
+        village: address.village || null,
+        municipality: address.municipality || null,
+        county: address.county || null,
+        state: address.state || null,
+        region: address.region || null,
+        country: address.country || null,
+        suburb: address.suburb || null,
+        neighbourhood: address.neighbourhood || null,
+        borough: address.borough || null
+      };
+    }
+
+    async function reverseGeocodeGoogle(lat, lon, apiKey) {
+      if (!apiKey) throw new Error('Informe a Google Maps API Key para usar o serviço do Google.');
+      const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${encodeURIComponent(lat)},${encodeURIComponent(lon)}&language=pt-BR&key=${encodeURIComponent(apiKey)}`;
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Falha ao consultar Google Maps Geocoding.');
+      const data = await response.json();
+      if (data.status !== 'OK' || !data.results?.length) throw new Error(`Google Maps retornou status: ${data.status || 'sem resultado'}`);
+      const result = data.results[0];
+      const getComponent = (...types) => {
+        const comp = result.address_components?.find(item => types.every(type => item.types.includes(type)));
+        return comp?.long_name || null;
+      };
+      return {
+        provider: 'Google Maps',
+        displayName: result.formatted_address || null,
+        formattedAddress: result.formatted_address || null,
+        label: getComponent('point_of_interest') || getComponent('establishment'),
+        city: getComponent('administrative_area_level_2') || getComponent('locality'),
+        town: getComponent('sublocality_level_1'),
+        village: null,
+        municipality: getComponent('locality'),
+        county: getComponent('administrative_area_level_2'),
+        state: getComponent('administrative_area_level_1'),
+        region: getComponent('administrative_area_level_1'),
+        country: getComponent('country'),
+        suburb: getComponent('sublocality') || getComponent('sublocality_level_1'),
+        neighbourhood: getComponent('neighborhood'),
+        borough: getComponent('administrative_area_level_3')
+      };
+    }
+
+    async function resolveLocationFromGPS(lat, lon) {
+      if (isWhatsappImage.checked) return { provider: 'WhatsApp override', displayName: 'Localização desconhecida' };
+      if (typeof lat !== 'number' || typeof lon !== 'number') return null;
+      if (geoProvider.value === 'none') return null;
+      if (geoProvider.value === 'google') return reverseGeocodeGoogle(lat, lon, googleApiKey.value.trim());
+      return reverseGeocodeOSM(lat, lon);
+    }
+
+    function getCheckedTags() {
+      return tagInputs.filter(input => input.checked).map(input => input.value);
+    }
+
+    function buildLinesFromTags(tags, data) {
+      const lines = [];
+      for (const tag of tags) {
+        switch (tag) {
+          case 'DateTimeOriginal': {
+            const v = getEffectiveDate(data, getCurrentSourceName());
+            if (v) lines.push(`Data: ${v}`);
+            break;
+          }
+          case 'Make': if (data.Make) lines.push(`Marca: ${data.Make}`); break;
+          case 'Model': if (data.Model) lines.push(`Câmera: ${data.Model}`); break;
+          case 'LensModel': if (data.LensModel) lines.push(`Lente: ${data.LensModel}`); break;
+          case 'ISO': if (data.ISO) lines.push(`ISO: ${data.ISO}`); break;
+          case 'FNumber': {
+            const v = formatFNumber(data.FNumber);
+            if (v) lines.push(`Abertura: ${v}`);
+            break;
+          }
+          case 'ExposureTime': {
+            const v = formatExposure(data.ExposureTime);
+            if (v) lines.push(`Exposição: ${v}`);
+            break;
+          }
+          case 'FocalLength': {
+            const v = formatFocalLength(data.FocalLength);
+            if (v) lines.push(`Focal: ${v}`);
+            break;
+          }
+          case 'GPS': {
+            if (!isWhatsappImage.checked) {
+              const v = formatGPS(data.latitude, data.longitude);
+              if (v) lines.push(`GPS: ${v}`);
+            }
+            break;
+          }
+          case 'ResolvedLocation': {
+            const v = formatResolvedLocation(resolvedLocation, locationFormat.value);
+            if (v) lines.push(`Local: ${v}`);
+            break;
+          }
+        }
+      }
+      return lines;
+    }
+
+    function getTypography() {
+      if (fontSelect.value === 'hand') {
+        return {
+          title: '700 68px "Patrick Hand", cursive',
+          body: '36px "Patrick Hand", cursive'
+        };
+      }
+      if (fontSelect.value === 'type') {
+        return {
+          title: '700 54px "Special Elite", serif',
+          body: '28px "Special Elite", serif'
+        };
+      }
+      if (fontSelect.value === 'clean') {
+        return {
+          title: '800 56px Inter, sans-serif',
+          body: '500 27px Inter, sans-serif'
+        };
+      }
+      return {
+        title: '700 58px "Special Elite", serif',
+        body: '34px "Patrick Hand", cursive'
+      };
+    }
+
+    function drawRoundedRect(x, y, w, h, r, fill = true) {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.lineTo(x + w - r, y);
+      ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+      ctx.lineTo(x + w, y + h - r);
+      ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+      ctx.lineTo(x + r, y + h);
+      ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+      ctx.lineTo(x, y + r);
+      ctx.quadraticCurveTo(x, y, x + r, y);
+      ctx.closePath();
+      if (fill) ctx.fill();
+    }
+
+    function wrapText(text, x, y, maxWidth, lineHeight) {
+      const words = text.split(/\s+/);
+      let line = '';
+      const out = [];
+      for (const word of words) {
+        const test = line ? `${line} ${word}` : word;
+        if (ctx.measureText(test).width > maxWidth) {
+          if (line) out.push(line);
+          line = word;
+        } else {
+          line = test;
+        }
+      }
+      if (line) out.push(line);
+      out.forEach((item, index) => ctx.fillText(item, x, y + index * lineHeight));
+      return out.length;
+    }
+
+    function renderPlaceholder() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const bg = ctx.createLinearGradient(0, 0, 0, canvas.height);
+      bg.addColorStop(0, '#e9dfd0');
+      bg.addColorStop(1, '#d8c8b2');
+      ctx.fillStyle = bg;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = 'rgba(255,255,255,.45)';
+      drawRoundedRect(240, 190, 920, 1220, 24);
+      ctx.fillStyle = '#7c6f60';
+      ctx.font = '700 56px Inter, sans-serif';
+      ctx.fillText('Solte uma memória aqui', 360, 720);
+      ctx.font = '30px Inter, sans-serif';
+      ctx.fillText('Upload ou link do Google Photos para começar.', 345, 780);
+    }
+
+    function applySepiaEffect() {
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const d = imageData.data;
+      for (let i = 0; i < d.length; i += 4) {
+        const r = d[i], g = d[i + 1], b = d[i + 2];
+        d[i] = Math.min(255, 0.393 * r + 0.769 * g + 0.189 * b);
+        d[i + 1] = Math.min(255, 0.349 * r + 0.686 * g + 0.168 * b);
+        d[i + 2] = Math.min(255, 0.272 * r + 0.534 * g + 0.131 * b);
+      }
+      ctx.putImageData(imageData, 0, 0);
+    }
+
+    function applyNoiseEffect(amount = 2800, alpha = 0.05) {
+      for (let i = 0; i < amount; i += 1) {
+        const x = Math.random() * canvas.width;
+        const y = Math.random() * canvas.height;
+        const size = Math.random() > 0.92 ? 2 : 1;
+        ctx.fillStyle = `rgba(0,0,0,${Math.random() * alpha})`;
+        ctx.fillRect(x, y, size, size);
+      }
+    }
+
+    function drawDustEffect() {
+      for (let i = 0; i < 45; i += 1) {
+        ctx.fillStyle = `rgba(255,255,255,${0.035 + Math.random() * 0.06})`;
+        ctx.beginPath();
+        ctx.arc(Math.random() * canvas.width, Math.random() * canvas.height, Math.random() * 2.8 + 0.8, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    function drawTape(x, y, w, h, rotationDeg) {
+      ctx.save();
+      ctx.translate(x + w / 2, y + h / 2);
+      ctx.rotate(rotationDeg * Math.PI / 180);
+      ctx.fillStyle = 'rgba(248, 233, 185, .66)';
+      ctx.fillRect(-w / 2, -h / 2, w, h);
+      ctx.strokeStyle = 'rgba(199, 179, 120, .28)';
+      ctx.strokeRect(-w / 2, -h / 2, w, h);
+      ctx.restore();
+    }
+
+    function drawStamp() {
+      if (!effectStamp.checked) return;
+      ctx.save();
+      ctx.translate(1110, 1320);
+      ctx.rotate(-0.16);
+      ctx.strokeStyle = 'rgba(176, 25, 25, .72)';
+      ctx.lineWidth = 7;
+      ctx.strokeRect(-124, -44, 248, 88);
+      ctx.font = '700 42px "Special Elite", serif';
+      ctx.fillStyle = 'rgba(176, 25, 25, .65)';
+      ctx.textAlign = 'center';
+      ctx.fillText('VINTAGE', 0, 14);
+      ctx.restore();
+    }
+
+    function drawBackgroundTexture() {
+      const bg = ctx.createLinearGradient(0, 0, 0, canvas.height);
+      bg.addColorStop(0, '#efe5d6');
+      bg.addColorStop(1, '#d7c7b2');
+      ctx.fillStyle = bg;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = 'rgba(255,255,255,.16)';
+      for (let i = 0; i < 18; i += 1) {
+        ctx.beginPath();
+        ctx.arc(Math.random() * canvas.width, Math.random() * canvas.height, Math.random() * 140 + 40, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    function renderPolaroid() {
+      if (!loadedImage) {
+        renderPlaceholder();
+        return;
+      }
+
+      const palette = framePalette();
+      const fonts = getTypography();
+      const selectedTags = getCheckedTags();
+      const lines = buildLinesFromTags(selectedTags, exifData);
+      const note = customText.value.trim();
+      const angle = Number(rotation.value || 0) * Math.PI / 180;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawBackgroundTexture();
+
+      const frameX = 230;
+      const frameY = 120;
+      const frameW = 940;
+      const frameH = 1320;
+      const photoMargin = 58;
+      const bottomSpace = 310;
+      const photoX = frameX + photoMargin;
+      const photoY = frameY + photoMargin;
+      const photoW = frameW - photoMargin * 2;
+      const photoH = frameH - photoMargin - bottomSpace;
+
+      ctx.save();
+      ctx.shadowColor = 'rgba(0,0,0,.19)';
+      ctx.shadowBlur = 48;
+      ctx.shadowOffsetY = 20;
+      ctx.fillStyle = palette.frame;
+      drawRoundedRect(frameX, frameY, frameW, frameH, 22);
+      ctx.restore();
+
+      if (showTape.checked) {
+        drawTape(frameX + 80, frameY - 28, 180, 48, -10);
+        drawTape(frameX + frameW - 250, frameY - 22, 170, 46, 8);
+      }
+
+      ctx.save();
+      ctx.translate(photoX + photoW / 2, photoY + photoH / 2);
+      ctx.rotate(angle);
+      ctx.fillStyle = palette.inner;
+      ctx.fillRect(-photoW / 2 - 10, -photoH / 2 - 10, photoW + 20, photoH + 20);
+
+      const imgRatio = loadedImage.width / loadedImage.height;
+      let drawW = photoW;
+      let drawH = photoH;
+      if (photoW / photoH > imgRatio) {
+        drawW = photoW;
+        drawH = drawW / imgRatio;
+      } else {
+        drawH = photoH;
+        drawW = drawH * imgRatio;
+      }
+
+      ctx.drawImage(loadedImage, -drawW / 2, -drawH / 2, drawW, drawH);
+      ctx.restore();
+
+      ctx.fillStyle = palette.ink;
+      ctx.textAlign = 'left';
+      let textY = photoY + photoH + 92;
+      ctx.font = fonts.title;
+      ctx.fillText((titleText.value || 'Minha Polaroid').trim(), frameX + 54, textY);
+      textY += fontSelect.value === 'type' ? 66 : 62;
+
+      ctx.font = fonts.body;
+      ctx.fillStyle = palette.ink === '#f8fafc' ? '#e5e7eb' : '#4b5563';
+      if (note) {
+        const used = wrapText(note, frameX + 54, textY, frameW - 108, fontSelect.value === 'type' ? 36 : 42);
+        textY += used * (fontSelect.value === 'type' ? 36 : 42) + 18;
+      }
+
+      ctx.font = fonts.body;
+      lines.forEach((line) => {
+        ctx.fillText(line, frameX + 54, textY);
+        textY += fontSelect.value === 'type' ? 34 : 38;
+      });
+
+      if (!note && !lines.length) {
+        ctx.fillText('Selecione tags ou adicione um texto manual.', frameX + 54, textY);
+      }
+
+      if (effectSepia.checked) applySepiaEffect();
+      if (effectGrain.checked) applyNoiseEffect(3500, .065);
+      if (effectDust.checked) drawDustEffect();
+      drawStamp();
+    }
+
+    function updateInspector(extra = {}) {
+      const items = [
+        ['Modo', extra.sourceMode || '—'],
+        ['Arquivo / origem', getCurrentSourceName() || '—'],
+        ['Data', getEffectiveDate(exifData, getCurrentSourceName())],
+        ['Local', formatResolvedLocation(resolvedLocation, locationFormat.value) || '—'],
+        ['Câmera', exifData.Model || '—'],
+        ['ISO', exifData.ISO || '—'],
+        ['Abertura', formatFNumber(exifData.FNumber) || '—'],
+        ['Exposição', formatExposure(exifData.ExposureTime) || '—'],
+        ['GPS', isWhatsappImage.checked ? 'oculto (WhatsApp)' : (formatGPS(exifData.latitude, exifData.longitude) || '—')]
+      ];
+
+      metadataStats.innerHTML = items.map(([label, value]) => `
+        <div class="stat">
+          <b>${label}</b>
+          <span>${value}</span>
+        </div>
+      `).join('');
+
+      sourceBadge.textContent = extra.sourceMode || 'upload';
+      hintBox.textContent = extra.note || (isWhatsappImage.checked
+        ? 'Modo WhatsApp ativo: localização forçada para desconhecida e data inferida do nome do arquivo, quando possível.'
+        : 'Você pode combinar presets, filtros e layout para criar um visual mais editorial.');
+    }
+
+    async function hydrateStateAndRender(extra = {}) {
+      try {
+        resolvedLocation = await resolveLocationFromGPS(exifData.latitude, exifData.longitude);
+      } catch (err) {
+        resolvedLocation = { error: err.message };
+      }
+      renderPolaroid();
+      updateInspector(extra);
+      downloadBtn.disabled = !loadedImage;
+    }
+
+    async function loadImageAndExif(file) {
+      selectedFile = file;
+      setStatus('Lendo EXIF e preparando preview…');
+      exifData = {};
+      resolvedLocation = null;
+      const blobUrl = URL.createObjectURL(file);
+      try {
+        exifData = (await exifr.parse(file, { tiff: true, exif: true, gps: true, translateValues: false })) || {};
+      } catch (err) {
+        exifData = {};
+      }
+      try {
+        loadedImage = await new Promise((resolve, reject) => {
+          const img = new Image();
+          img.onload = () => resolve(img);
+          img.onerror = reject;
+          img.src = blobUrl;
+        });
+        loadedImage.dataset.sourceName = file.name || '';
+      } finally {
+        URL.revokeObjectURL(blobUrl);
+      }
+      await hydrateStateAndRender({ sourceMode: 'upload local' });
+      setStatus('Preview atualizado.');
+    }
+
+    async function loadFromUrl() {
+      const inputUrl = googlePhotosUrl.value.trim();
+      if (!inputUrl) {
+        setStatus('Cole um link antes de continuar.');
+        return;
+      }
+
+      selectedFile = null;
+      exifData = {};
+      resolvedLocation = null;
+      setStatus('Abrindo imagem a partir do link…');
+
+      const { img, resolvedUrl } = await loadImageFromUrl(inputUrl);
+      loadedImage = img;
+      loadedImage.dataset.sourceName = resolvedUrl.split('/').pop()?.split('?')[0] || 'google-photos-image.jpg';
+
+      try {
+        const exifUrl = normalizeProxyUrl(corsProxyUrl.value, resolvedUrl);
+        exifData = (await exifr.parse(exifUrl, {
+          tiff: true,
+          exif: true,
+          gps: true,
+          translateValues: false,
+          fetch
+        })) || {};
+      } catch (err) {
+        exifData = {};
+      }
+
+      await hydrateStateAndRender({
+        sourceMode: 'google photos link',
+        note: Object.keys(exifData).length
+          ? 'Imagem carregada por link com leitura parcial/completa de metadados.'
+          : 'Imagem aberta por link. Alguns serviços podem bloquear a leitura de EXIF por CORS.'
+      });
+      setStatus('Imagem via link carregada.');
+    }
+
+    function applyPreset(name) {
+      if (name === 'classic') {
+        fontSelect.value = 'default';
+        frameTone.value = 'warm';
+        showTape.checked = true;
+        effectSepia.checked = false;
+        effectGrain.checked = false;
+        effectStamp.checked = false;
+        effectDust.checked = false;
+        rotation.value = -4;
+      }
+      if (name === 'scrapbook') {
+        fontSelect.value = 'hand';
+        frameTone.value = 'cream';
+        showTape.checked = true;
+        effectSepia.checked = false;
+        effectGrain.checked = true;
+        effectStamp.checked = false;
+        effectDust.checked = true;
+        rotation.value = -7;
+      }
+      if (name === 'cinema') {
+        fontSelect.value = 'type';
+        frameTone.value = 'charcoal';
+        showTape.checked = false;
+        effectSepia.checked = true;
+        effectGrain.checked = true;
+        effectStamp.checked = true;
+        effectDust.checked = true;
+        rotation.value = -2;
+      }
+      if (name === 'summer') {
+        fontSelect.value = 'clean';
+        frameTone.value = 'white';
+        showTape.checked = true;
+        effectSepia.checked = true;
+        effectGrain.checked = false;
+        effectStamp.checked = false;
+        effectDust.checked = false;
+        rotation.value = 3;
+      }
+      if (loadedImage) renderPolaroid();
+    }
+
+    function resetApp() {
+      selectedFile = null;
+      loadedImage = null;
+      exifData = {};
+      resolvedLocation = null;
+      imageInput.value = '';
+      googlePhotosUrl.value = '';
+      corsProxyUrl.value = '';
+      titleText.value = 'Minha Polaroid';
+      customText.value = '';
+      fontSelect.value = 'default';
+      rotation.value = -4;
+      frameTone.value = 'warm';
+      locationFormat.value = 'short';
+      geoProvider.value = 'osm';
+      googleApiKey.value = '';
+      isWhatsappImage.checked = false;
+      showTape.checked = true;
+      effectSepia.checked = false;
+      effectGrain.checked = false;
+      effectStamp.checked = false;
+      effectDust.checked = false;
+      tagInputs.forEach(input => {
+        input.checked = ['DateTimeOriginal', 'ResolvedLocation', 'Model', 'ISO', 'FNumber', 'ExposureTime'].includes(input.value);
+      });
+      updateInspector({ sourceMode: 'sem fonte', note: 'Tudo limpo. Escolha uma nova imagem para continuar.' });
+      renderPlaceholder();
+      downloadBtn.disabled = true;
+      setStatus('Estado inicial restaurado.');
+    }
+
+    imageInput.addEventListener('change', async (event) => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      googlePhotosUrl.value = '';
+      try {
+        await loadImageAndExif(file);
+      } catch (err) {
+        setStatus(`Erro ao carregar arquivo: ${err.message}`);
+      }
+    });
+
+    loadFromUrlBtn.addEventListener('click', async () => {
+      try {
+        await loadFromUrl();
+      } catch (err) {
+        renderPlaceholder();
+        updateInspector({ sourceMode: 'erro', note: err.message });
+        setStatus(`Erro: ${err.message}`);
+      }
+    });
+
+    generateBtn.addEventListener('click', () => {
+      if (!loadedImage) return;
+      renderPolaroid();
+      updateInspector({ sourceMode: googlePhotosUrl.value.trim() ? 'google photos link' : 'upload local' });
+      setStatus('Renderização concluída.');
+    });
+
+    downloadBtn.addEventListener('click', () => {
+      if (!loadedImage) return;
+      const a = document.createElement('a');
+      const safe = (titleText.value || 'polaroid').trim().replace(/[^a-z0-9-_]+/gi, '-').toLowerCase();
+      a.download = `${safe || 'polaroid'}.png`;
+      a.href = canvas.toDataURL('image/png');
+      a.click();
+      setStatus('PNG gerado para download.');
+    });
+
+    resetBtn.addEventListener('click', resetApp);
+
+    [titleText, customText, fontSelect, rotation, frameTone, locationFormat, isWhatsappImage, showTape, effectSepia, effectGrain, effectStamp, effectDust].forEach(el => {
+      el.addEventListener('input', () => { if (loadedImage) renderPolaroid(); });
+      el.addEventListener('change', async () => {
+        if (!loadedImage) return;
+        await hydrateStateAndRender({ sourceMode: googlePhotosUrl.value.trim() ? 'google photos link' : 'upload local' });
+      });
+    });
+
+    [geoProvider, googleApiKey].forEach(el => {
+      el.addEventListener('change', async () => {
+        if (!loadedImage) return;
+        await hydrateStateAndRender({ sourceMode: googlePhotosUrl.value.trim() ? 'google photos link' : 'upload local' });
+      });
+    });
+
+    tagInputs.forEach(input => {
+      input.addEventListener('change', () => { if (loadedImage) renderPolaroid(); });
+    });
+
+    presetButtons.forEach(button => {
+      button.addEventListener('click', () => {
+        applyPreset(button.dataset.preset);
+        if (loadedImage) {
+          renderPolaroid();
+          updateInspector({ sourceMode: googlePhotosUrl.value.trim() ? 'google photos link' : 'upload local', note: `Preset aplicado: ${button.dataset.preset}.` });
+        } else {
+          setStatus(`Preset preparado: ${button.dataset.preset}.`);
+        }
+      });
+    });
+
+    function runSelfTests() {
+      console.assert(formatExposure(0.01) === '1/100s', 'Teste exposição');
+      console.assert(formatFNumber(2.8) === 'f/2.8', 'Teste abertura');
+      console.assert(formatGPS(-23.55, -46.63) === '-23.55000, -46.63000', 'Teste GPS');
+      console.assert(isLikelyDirectImageUrl('https://lh3.googleusercontent.com/abc=w2000') === true, 'Teste link direto');
+      console.assert(isLikelyDirectImageUrl('https://photos.app.goo.gl/xyz') === false, 'Teste link compartilhado');
+      console.assert(typeof formatDateOnly(new Date(2024, 2, 17)) === 'string', 'Teste data simples');
+      const waDate = parseWhatsappDateFromFilename('IMG-20240317-WA0001.jpg');
+      console.assert(waDate instanceof Date && !isNaN(waDate), 'Teste WhatsApp');
+      console.assert(framePalette().frame.length > 0, 'Teste palette');
+    }
+
+    runSelfTests();
+    resetApp();
+  </script>
+</body>
+</html>
