@@ -1,0 +1,996 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Polaroid EXIF Generator</title>
+  <style>
+    :root {
+      --bg: #f5f1ea;
+      --panel: #fffdf9;
+      --ink: #1f2937;
+      --muted: #6b7280;
+      --line: #e5e7eb;
+      --accent: #111827;
+      --shadow: 0 16px 40px rgba(0,0,0,.08);
+      --radius: 22px;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: linear-gradient(180deg, #f8f5ef 0%, #f2eee7 100%);
+    }
+
+    .wrap {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: 1.15fr .85fr;
+      gap: 24px;
+      align-items: start;
+    }
+
+    .card {
+      background: rgba(255,255,255,.82);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255,255,255,.65);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 22px;
+    }
+
+    h1 {
+      font-size: clamp(2rem, 4vw, 3rem);
+      line-height: 1.05;
+      margin: 0 0 12px;
+    }
+
+    h2 {
+      font-size: 1.1rem;
+      margin: 0 0 14px;
+    }
+
+    p {
+      margin: 0 0 12px;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+      margin-top: 24px;
+    }
+
+    .controls {
+      display: grid;
+      gap: 18px;
+    }
+
+    .field {
+      display: grid;
+      gap: 10px;
+    }
+
+    label {
+      font-size: .95rem;
+      font-weight: 600;
+    }
+
+    input[type="file"],
+    input[type="text"],
+    input[type="number"],
+    select,
+    textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 12px 14px;
+      background: #fff;
+      color: var(--ink);
+      font: inherit;
+    }
+
+    textarea { min-height: 86px; resize: vertical; }
+
+    .check-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .chip {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: #fff;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 999px;
+      padding: 12px 18px;
+      background: var(--accent);
+      color: white;
+      cursor: pointer;
+      font: inherit;
+      font-weight: 700;
+      transition: transform .15s ease, opacity .15s ease;
+    }
+
+    button.secondary {
+      background: white;
+      color: var(--ink);
+      border: 1px solid var(--line);
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: .55;
+    }
+
+    button:hover:not(:disabled) { transform: translateY(-1px); }
+
+    .preview-area {
+      display: grid;
+      gap: 16px;
+      position: sticky;
+      top: 24px;
+    }
+
+    .preview-shell {
+      background: #ece8df;
+      border-radius: 28px;
+      padding: 18px;
+      box-shadow: inset 0 0 0 1px rgba(0,0,0,.04);
+    }
+
+    canvas {
+      width: 100%;
+      display: block;
+      border-radius: 18px;
+      background: #ded9ce;
+    }
+
+    .meta-box {
+      border: 1px dashed var(--line);
+      border-radius: 16px;
+      padding: 14px;
+      background: rgba(255,255,255,.65);
+      font-size: .92rem;
+      color: var(--muted);
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      max-height: 250px;
+      overflow: auto;
+    }
+
+    .small {
+      font-size: .88rem;
+      color: var(--muted);
+    }
+
+    .pill-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .pill {
+      font-size: .8rem;
+      background: rgba(17,24,39,.06);
+      color: #374151;
+      padding: 8px 10px;
+      border-radius: 999px;
+    }
+
+    .footer-note {
+      margin-top: 22px;
+      font-size: .86rem;
+      color: var(--muted);
+    }
+
+    @media (max-width: 900px) {
+      .hero {
+        grid-template-columns: 1fr;
+      }
+      .grid,
+      .check-grid {
+        grid-template-columns: 1fr;
+      }
+      .preview-area { position: static; }
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/exifr/dist/lite.umd.js"></script>
+</head>
+<body>
+  <div class="wrap">
+    <section class="hero">
+      <div class="card">
+        <div class="pill-row">
+          <span class="pill">GitHub Pages Ready</span>
+          <span class="pill">100% client-side</span>
+          <span class="pill">Sem backend</span>
+        </div>
+        <h1>Gerador de Polaroid com metadados EXIF</h1>
+        <p>
+          Faça upload de uma foto, escolha quais tags de metadados deseja mostrar,
+          gere a arte em estilo polaroid e baixe a imagem final em PNG.
+        </p>
+        <div class="grid">
+          <div class="controls">
+            <div class="field">
+              <label for="imageInput">1. Upload da foto</label>
+              <input id="imageInput" type="file" accept="image/*" />
+              <span class="small">JPEG costuma trazer mais EXIF. PNG e imagens reenviadas por apps podem não ter metadados.</span>
+            </div>
+
+            <div class="field">
+              <label for="googlePhotosUrl">1.1 Abrir foto por link do Google Photos</label>
+              <input id="googlePhotosUrl" type="text" placeholder="Cole um link público do Google Photos ou um link direto da imagem" />
+              <div class="actions">
+                <button id="loadFromUrlBtn" type="button" class="secondary">Abrir do link</button>
+              </div>
+              <span class="small">Funciona melhor com links diretos da imagem. Links de compartilhamento do Google Photos podem falhar por restrições de CORS do navegador.</span>
+            </div>
+
+            <div class="grid">
+              <div class="field">
+                <label for="linkResolverMode">Como resolver o link</label>
+                <select id="linkResolverMode">
+                  <option value="auto" selected>Automático</option>
+                  <option value="direct">Assumir que o link já é direto da imagem</option>
+                  <option value="page">Tentar extrair a imagem da página compartilhada</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="corsProxyUrl">Proxy CORS opcional</label>
+                <input id="corsProxyUrl" type="text" placeholder="Ex.: https://cors.isomorphic-git.org/" />
+              </div>
+            </div>
+
+            <div class="field">
+              <label>2. Tags de metadados que vão aparecer</label>
+              <div class="check-grid">
+                <label class="chip"><input type="checkbox" value="DateTimeOriginal" checked /> Data original</label>
+                <label class="chip"><input type="checkbox" value="Make" /> Fabricante</label>
+                <label class="chip"><input type="checkbox" value="Model" checked /> Modelo</label>
+                <label class="chip"><input type="checkbox" value="LensModel" /> Lente</label>
+                <label class="chip"><input type="checkbox" value="ISO" checked /> ISO</label>
+                <label class="chip"><input type="checkbox" value="FNumber" checked /> Abertura</label>
+                <label class="chip"><input type="checkbox" value="ExposureTime" checked /> Exposição</label>
+                <label class="chip"><input type="checkbox" value="FocalLength" /> Distância focal</label>
+                <label class="chip"><input type="checkbox" value="GPS" /> GPS bruto</label>
+                <label class="chip"><input type="checkbox" value="ResolvedLocation" checked /> Localização convertida</label>
+              </div>
+            </div>
+
+            <div class="grid">
+              <div class="field">
+                <label for="geoProvider">Serviço para converter GPS em local</label>
+                <select id="geoProvider">
+                  <option value="none">Não buscar localização</option>
+                  <option value="osm" selected>OpenStreetMap / Nominatim</option>
+                  <option value="google">Google Maps Geocoding</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="googleApiKey">Google Maps API Key (opcional)</label>
+                <input id="googleApiKey" type="text" placeholder="Necessária apenas se escolher Google Maps" />
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="locationFormat">Formato da tag de localização</label>
+              <select id="locationFormat">
+                <option value="short" selected>Cidade, estado, país</option>
+                <option value="medium">Bairro, cidade, estado, país</option>
+                <option value="full">Endereço completo</option>
+              </select>
+              <span class="small">A tag “Localização convertida” usa esse formato quando o GPS estiver disponível.</span>
+            </div>
+
+            <div class="field">
+              <label for="customText">3. Texto manual opcional</label>
+              <textarea id="customText" placeholder="Ex.: Viagem para Lisboa • pôr do sol"></textarea>
+            </div>
+
+            <div class="grid">
+              <div class="field">
+                <label for="rotation">Inclinação da foto</label>
+                <input id="rotation" type="number" min="-15" max="15" step="1" value="-4" />
+              </div>
+              <div class="field">
+                <label for="titleText">Título no rodapé</label>
+                <input id="titleText" type="text" value="Minha Polaroid" />
+              </div>
+            </div>
+
+            <div class="actions">
+              <button id="generateBtn" disabled>Gerar polaroid</button>
+              <button id="downloadBtn" class="secondary" disabled>Baixar imagem</button>
+            </div>
+
+            <div class="footer-note">
+              Tudo acontece no navegador. A imagem não é enviada para servidor, o que facilita hospedar no GitHub Pages.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="preview-area">
+        <div class="card preview-shell">
+          <h2>Pré-visualização</h2>
+          <canvas id="canvas" width="1200" height="1500"></canvas>
+        </div>
+
+        <div class="card">
+          <h2>Metadados detectados</h2>
+          <div id="metadataBox" class="meta-box">Nenhuma imagem carregada.</div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const imageInput = document.getElementById('imageInput');
+    const generateBtn = document.getElementById('generateBtn');
+    const downloadBtn = document.getElementById('downloadBtn');
+    const metadataBox = document.getElementById('metadataBox');
+    const titleText = document.getElementById('titleText');
+    const googlePhotosUrl = document.getElementById('googlePhotosUrl');
+    const loadFromUrlBtn = document.getElementById('loadFromUrlBtn');
+    const linkResolverMode = document.getElementById('linkResolverMode');
+    const corsProxyUrl = document.getElementById('corsProxyUrl');
+    const geoProvider = document.getElementById('geoProvider');
+    const googleApiKey = document.getElementById('googleApiKey');
+    const locationFormat = document.getElementById('locationFormat');
+    const customText = document.getElementById('customText');
+    const rotationInput = document.getElementById('rotation');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+
+    let selectedFile = null;
+    let loadedImage = null;
+    let exifData = {};
+    let resolvedLocation = null;
+
+    function formatExposure(value) {
+      if (!value) return null;
+      if (typeof value === 'number') {
+        if (value >= 1) return `${value}s`;
+        const inv = Math.round(1 / value);
+        return `1/${inv}s`;
+      }
+      return String(value);
+    }
+
+    function formatDate(value) {
+      if (!value) return null;
+      if (value instanceof Date && !isNaN(value)) {
+        return new Intl.DateTimeFormat('pt-BR', {
+          dateStyle: 'medium',
+          timeStyle: 'short'
+        }).format(value);
+      }
+      if (typeof value === 'string') {
+        return value.replace(/^([0-9]{4}):([0-9]{2}):([0-9]{2})/, '$3/$2/$1');
+      }
+      return String(value);
+    }
+
+    function formatFNumber(value) {
+      if (!value) return null;
+      return `f/${Number(value).toFixed(1).replace('.0', '')}`;
+    }
+
+    function formatFocalLength(value) {
+      if (!value) return null;
+      return `${Math.round(Number(value))}mm`;
+    }
+
+    function formatGPS(lat, lon) {
+      if (typeof lat !== 'number' || typeof lon !== 'number') return null;
+      return `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
+    }
+
+    function firstNonEmpty(...values) {
+      return values.find((value) => typeof value === 'string' && value.trim()) || null;
+    }
+
+    function formatResolvedLocation(location, mode) {
+      if (!location || location.error) return null;
+      if (mode === 'full') {
+        return firstNonEmpty(location.formattedAddress, location.displayName, location.label);
+      }
+
+      const city = firstNonEmpty(location.city, location.town, location.village, location.municipality, location.county);
+      const state = firstNonEmpty(location.state, location.region);
+      const country = firstNonEmpty(location.country);
+      const suburb = firstNonEmpty(location.suburb, location.neighbourhood, location.borough);
+
+      const shortParts = [city, state, country].filter(Boolean);
+      const mediumParts = [suburb, city, state, country].filter(Boolean);
+
+      if (mode === 'medium' && mediumParts.length) return mediumParts.join(', ');
+      if (shortParts.length) return shortParts.join(', ');
+      return firstNonEmpty(location.formattedAddress, location.displayName, location.label);
+    }
+
+    async function reverseGeocodeOSM(lat, lon) {
+      const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&zoom=18&addressdetails=1`;
+      const response = await fetch(url, {
+        headers: { Accept: 'application/json' }
+      });
+      if (!response.ok) throw new Error('Falha ao consultar OpenStreetMap/Nominatim.');
+      const data = await response.json();
+      const address = data.address || {};
+      return {
+        provider: 'OpenStreetMap',
+        displayName: data.display_name || null,
+        formattedAddress: data.display_name || null,
+        label: data.name || null,
+        city: address.city || null,
+        town: address.town || null,
+        village: address.village || null,
+        municipality: address.municipality || null,
+        county: address.county || null,
+        state: address.state || null,
+        region: address.region || null,
+        country: address.country || null,
+        suburb: address.suburb || null,
+        neighbourhood: address.neighbourhood || null,
+        borough: address.borough || null
+      };
+    }
+
+    async function reverseGeocodeGoogle(lat, lon, apiKey) {
+      if (!apiKey) throw new Error('Informe a Google Maps API Key para usar o serviço do Google.');
+      const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${encodeURIComponent(lat)},${encodeURIComponent(lon)}&language=pt-BR&key=${encodeURIComponent(apiKey)}`;
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Falha ao consultar Google Maps Geocoding.');
+      const data = await response.json();
+      if (data.status !== 'OK' || !data.results?.length) {
+        throw new Error(`Google Maps retornou status: ${data.status || 'sem resultado'}`);
+      }
+
+      const result = data.results[0];
+      const getComponent = (...types) => {
+        const comp = result.address_components?.find((item) => types.every((type) => item.types.includes(type)));
+        return comp?.long_name || null;
+      };
+
+      return {
+        provider: 'Google Maps',
+        displayName: result.formatted_address || null,
+        formattedAddress: result.formatted_address || null,
+        label: getComponent('point_of_interest') || getComponent('establishment'),
+        city: getComponent('administrative_area_level_2') || getComponent('locality'),
+        town: getComponent('sublocality_level_1'),
+        village: null,
+        municipality: getComponent('locality'),
+        county: getComponent('administrative_area_level_2'),
+        state: getComponent('administrative_area_level_1'),
+        region: getComponent('administrative_area_level_1'),
+        country: getComponent('country'),
+        suburb: getComponent('sublocality') || getComponent('sublocality_level_1'),
+        neighbourhood: getComponent('neighborhood'),
+        borough: getComponent('administrative_area_level_3')
+      };
+    }
+
+    async function resolveLocationFromGPS(lat, lon) {
+      if (typeof lat !== 'number' || typeof lon !== 'number') return null;
+      const provider = geoProvider.value;
+      if (provider === 'none') return null;
+      if (provider === 'google') return reverseGeocodeGoogle(lat, lon, googleApiKey.value.trim());
+      return reverseGeocodeOSM(lat, lon);
+    }
+
+    function getCheckedTags() {
+      return Array.from(document.querySelectorAll('.check-grid input[type="checkbox"]:checked')).map((el) => el.value);
+    }
+
+    function buildLinesFromTags(tags, data) {
+      const lines = [];
+      for (const tag of tags) {
+        switch (tag) {
+          case 'DateTimeOriginal': {
+            const v = formatDate(data.DateTimeOriginal || data.CreateDate || data.ModifyDate);
+            if (v) lines.push(`Data: ${v}`);
+            break;
+          }
+          case 'Make':
+            if (data.Make) lines.push(`Marca: ${data.Make}`);
+            break;
+          case 'Model':
+            if (data.Model) lines.push(`Câmera: ${data.Model}`);
+            break;
+          case 'LensModel':
+            if (data.LensModel) lines.push(`Lente: ${data.LensModel}`);
+            break;
+          case 'ISO':
+            if (data.ISO) lines.push(`ISO: ${data.ISO}`);
+            break;
+          case 'FNumber': {
+            const v = formatFNumber(data.FNumber);
+            if (v) lines.push(`Abertura: ${v}`);
+            break;
+          }
+          case 'ExposureTime': {
+            const v = formatExposure(data.ExposureTime);
+            if (v) lines.push(`Exposição: ${v}`);
+            break;
+          }
+          case 'FocalLength': {
+            const v = formatFocalLength(data.FocalLength);
+            if (v) lines.push(`Focal: ${v}`);
+            break;
+          }
+          case 'GPS': {
+            const v = formatGPS(data.latitude, data.longitude);
+            if (v) lines.push(`GPS: ${v}`);
+            break;
+          }
+          case 'ResolvedLocation': {
+            const v = formatResolvedLocation(resolvedLocation, locationFormat.value);
+            if (v) lines.push(`Local: ${v}`);
+            break;
+          }
+          default:
+            break;
+        }
+      }
+      return lines;
+    }
+
+    function drawRoundedRect(x, y, w, h, r, fill = true) {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.lineTo(x + w - r, y);
+      ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+      ctx.lineTo(x + w, y + h - r);
+      ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+      ctx.lineTo(x + r, y + h);
+      ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+      ctx.lineTo(x, y + r);
+      ctx.quadraticCurveTo(x, y, x + r, y);
+      ctx.closePath();
+      if (fill) ctx.fill();
+    }
+
+    function wrapText(text, x, y, maxWidth, lineHeight) {
+      const words = text.split(/\s+/);
+      let line = '';
+      const output = [];
+      for (const word of words) {
+        const test = line ? `${line} ${word}` : word;
+        if (ctx.measureText(test).width > maxWidth) {
+          if (line) output.push(line);
+          line = word;
+        } else {
+          line = test;
+        }
+      }
+      if (line) output.push(line);
+      output.forEach((ln, i) => ctx.fillText(ln, x, y + i * lineHeight));
+      return output.length;
+    }
+
+    function renderPlaceholder() {
+      ctx.fillStyle = '#ddd7cb';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#6b7280';
+      ctx.font = '32px Inter, Arial, sans-serif';
+      ctx.fillText('Faça upload de uma imagem para começar.', 220, 740);
+    }
+
+    function renderPolaroid() {
+      if (!loadedImage) {
+        renderPlaceholder();
+        return;
+      }
+
+      const w = canvas.width;
+      const h = canvas.height;
+      ctx.clearRect(0, 0, w, h);
+
+      const bg = ctx.createLinearGradient(0, 0, 0, h);
+      bg.addColorStop(0, '#f4efe7');
+      bg.addColorStop(1, '#e9e0d2');
+      ctx.fillStyle = bg;
+      ctx.fillRect(0, 0, w, h);
+
+      for (let i = 0; i < 14; i += 1) {
+        ctx.fillStyle = `rgba(0,0,0,${Math.random() * 0.03})`;
+        ctx.beginPath();
+        ctx.arc(Math.random() * w, Math.random() * h, Math.random() * 2 + 1, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      const frameX = 140;
+      const frameY = 90;
+      const frameW = 920;
+      const frameH = 1180;
+      const photoMargin = 56;
+      const bottomSpace = 240;
+      const photoX = frameX + photoMargin;
+      const photoY = frameY + photoMargin;
+      const photoW = frameW - photoMargin * 2;
+      const photoH = frameH - photoMargin - bottomSpace;
+
+      ctx.save();
+      ctx.shadowColor = 'rgba(0,0,0,.18)';
+      ctx.shadowBlur = 30;
+      ctx.shadowOffsetY = 16;
+      ctx.fillStyle = '#fffaf4';
+      drawRoundedRect(frameX, frameY, frameW, frameH, 18);
+      ctx.restore();
+
+      ctx.save();
+      drawRoundedRect(frameX, frameY, frameW, frameH, 18, false);
+      ctx.clip();
+      ctx.fillStyle = '#fffaf4';
+      ctx.fillRect(frameX, frameY, frameW, frameH);
+      ctx.restore();
+
+      const imgRatio = loadedImage.width / loadedImage.height;
+      let drawW = photoW;
+      let drawH = photoH;
+      if (photoW / photoH > imgRatio) {
+        drawW = photoW;
+        drawH = drawW / imgRatio;
+      } else {
+        drawH = photoH;
+        drawW = drawH * imgRatio;
+      }
+      const dx = photoX + (photoW - drawW) / 2;
+      const dy = photoY + (photoH - drawH) / 2;
+
+      const angle = Number(rotationInput.value || 0) * Math.PI / 180;
+      const cx = photoX + photoW / 2;
+      const cy = photoY + photoH / 2;
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(angle);
+      ctx.fillStyle = '#f3efe7';
+      ctx.fillRect(-photoW / 2 - 8, -photoH / 2 - 8, photoW + 16, photoH + 16);
+      ctx.drawImage(loadedImage, dx - cx, dy - cy, drawW, drawH);
+      ctx.restore();
+
+      const heading = (titleText.value || 'Minha Polaroid').trim();
+      const lines = buildLinesFromTags(getCheckedTags(), exifData);
+      const manualText = customText.value.trim();
+
+      let textY = photoY + photoH + 88;
+      ctx.fillStyle = '#111827';
+      ctx.font = '700 40px Inter, Arial, sans-serif';
+      ctx.fillText(heading, frameX + 54, textY);
+      textY += 52;
+
+      ctx.fillStyle = '#4b5563';
+      ctx.font = '28px Inter, Arial, sans-serif';
+      if (manualText) {
+        const used = wrapText(manualText, frameX + 54, textY, frameW - 108, 36);
+        textY += used * 36 + 18;
+      }
+
+      ctx.font = '24px Inter, Arial, sans-serif';
+      lines.forEach((line) => {
+        ctx.fillText(line, frameX + 54, textY);
+        textY += 34;
+      });
+
+      if (!lines.length && !manualText) {
+        ctx.fillStyle = '#6b7280';
+        ctx.fillText('Selecione tags EXIF ou escreva um texto manual para preencher o rodapé.', frameX + 54, textY);
+      }
+    }
+
+    function normalizeProxyUrl(base, targetUrl) {
+      const trimmed = (base || '').trim();
+      if (!trimmed) return targetUrl;
+      return `${trimmed.replace(/\/?$/, '/')}${targetUrl}`;
+    }
+
+    function isLikelyDirectImageUrl(url) {
+      return /googleusercontent\.com|\.jpg($|\?)|\.jpeg($|\?)|\.png($|\?)|\.webp($|\?)/i.test(url);
+    }
+
+    async function fetchTextWithOptionalProxy(url) {
+      const finalUrl = normalizeProxyUrl(corsProxyUrl.value, url);
+      const response = await fetch(finalUrl, {
+        headers: {
+          Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+        }
+      });
+      if (!response.ok) throw new Error(`Falha ao ler a página do link. HTTP ${response.status}.`);
+      return response.text();
+    }
+
+    function extractImageUrlFromSharedHtml(html) {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
+      const metaCandidates = [
+        doc.querySelector('meta[property="og:image"]')?.content,
+        doc.querySelector('meta[name="twitter:image"]')?.content,
+        doc.querySelector('link[rel="image_src"]')?.href
+      ].filter(Boolean);
+      if (metaCandidates.length) return metaCandidates[0];
+
+      const raw = html.match(/https:\/\/lh[0-9]+\.googleusercontent\.com\/[^"'\s<)]+/i);
+      return raw?.[0] || null;
+    }
+
+    async function loadHtmlSharedImageUrl(url) {
+      const html = await fetchTextWithOptionalProxy(url);
+      const extracted = extractImageUrlFromSharedHtml(html);
+      if (!extracted) {
+        throw new Error('Não foi possível extrair um link de imagem da página compartilhada.');
+      }
+      return extracted;
+    }
+
+    async function resolveGooglePhotosImageUrl(url) {
+      const cleanUrl = (url || '').trim();
+      if (!cleanUrl) throw new Error('Cole um link do Google Photos para continuar.');
+
+      const mode = linkResolverMode.value;
+      if (mode === 'direct') return cleanUrl;
+      if (mode === 'page') return loadHtmlSharedImageUrl(cleanUrl);
+      if (isLikelyDirectImageUrl(cleanUrl)) return cleanUrl;
+      return loadHtmlSharedImageUrl(cleanUrl);
+    }
+
+    async function loadImageFromUrl(url) {
+      const resolvedUrl = await resolveGooglePhotosImageUrl(url);
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.referrerPolicy = 'no-referrer';
+        img.onload = () => resolve({ img, resolvedUrl });
+        img.onerror = () => reject(new Error('O navegador não conseguiu carregar a imagem a partir do link informado.'));
+        img.src = resolvedUrl;
+      });
+    }
+
+    async function hydrateMetadataPreview(extra = {}) {
+      const metadataPreview = {
+        SourceMode: extra.sourceMode || 'upload',
+        SourceUrl: extra.sourceUrl || null,
+        DateTimeOriginal: formatDate(exifData.DateTimeOriginal),
+        Make: exifData.Make || null,
+        Model: exifData.Model || null,
+        LensModel: exifData.LensModel || null,
+        ISO: exifData.ISO || null,
+        FNumber: formatFNumber(exifData.FNumber),
+        ExposureTime: formatExposure(exifData.ExposureTime),
+        FocalLength: formatFocalLength(exifData.FocalLength),
+        GPS: formatGPS(exifData.latitude, exifData.longitude),
+        ResolvedLocation: resolvedLocation?.error
+          ? `Erro: ${resolvedLocation.error}`
+          : formatResolvedLocation(resolvedLocation, locationFormat.value),
+        LocationProvider: resolvedLocation?.provider || (geoProvider.value === 'none' ? 'desativado' : null),
+        LinkResolverMode: extra.linkResolverMode || null,
+        Note: extra.note || null
+      };
+      metadataBox.textContent = JSON.stringify(metadataPreview, null, 2);
+    }
+
+    async function loadImageAndExif(file) {
+      selectedFile = file;
+      resolvedLocation = null;
+      exifData = {};
+      generateBtn.disabled = true;
+      downloadBtn.disabled = true;
+      metadataBox.textContent = 'Lendo imagem, metadados e localização...';
+
+      try {
+        exifData = (await exifr.parse(file, {
+          tiff: true,
+          exif: true,
+          gps: true,
+          translateValues: false
+        })) || {};
+      } catch (err) {
+        console.error(err);
+        exifData = {};
+      }
+
+      const blobUrl = URL.createObjectURL(file);
+      try {
+        loadedImage = await new Promise((resolve, reject) => {
+          const img = new Image();
+          img.onload = () => resolve(img);
+          img.onerror = reject;
+          img.src = blobUrl;
+        });
+      } finally {
+        URL.revokeObjectURL(blobUrl);
+      }
+
+      try {
+        resolvedLocation = await resolveLocationFromGPS(exifData.latitude, exifData.longitude);
+      } catch (err) {
+        console.error(err);
+        resolvedLocation = { error: err.message };
+      }
+
+      await hydrateMetadataPreview({ sourceMode: 'upload' });
+      renderPolaroid();
+      generateBtn.disabled = false;
+      downloadBtn.disabled = false;
+    }
+
+    async function refreshResolvedLocationAndPreview(sourceMode, sourceUrl, mode) {
+      try {
+        resolvedLocation = await resolveLocationFromGPS(exifData.latitude, exifData.longitude);
+      } catch (err) {
+        console.error(err);
+        resolvedLocation = { error: err.message };
+      }
+      await hydrateMetadataPreview({
+        sourceMode,
+        sourceUrl,
+        linkResolverMode: mode || null
+      });
+      renderPolaroid();
+    }
+
+    imageInput.addEventListener('change', async (event) => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      googlePhotosUrl.value = '';
+      await loadImageAndExif(file);
+    });
+
+    loadFromUrlBtn.addEventListener('click', async () => {
+      const inputUrl = googlePhotosUrl.value.trim();
+      if (!inputUrl) {
+        metadataBox.textContent = 'Cole um link do Google Photos para abrir a imagem.';
+        return;
+      }
+
+      generateBtn.disabled = true;
+      downloadBtn.disabled = true;
+      loadFromUrlBtn.disabled = true;
+      resolvedLocation = null;
+      exifData = {};
+      metadataBox.textContent = 'Tentando abrir a foto a partir do link...';
+
+      try {
+        const { img, resolvedUrl } = await loadImageFromUrl(inputUrl);
+        loadedImage = img;
+
+        try {
+          const exifUrl = normalizeProxyUrl(corsProxyUrl.value, resolvedUrl);
+          exifData = (await exifr.parse(exifUrl, {
+            tiff: true,
+            exif: true,
+            gps: true,
+            translateValues: false,
+            fetch
+          })) || {};
+        } catch (err) {
+          console.error(err);
+          exifData = {};
+        }
+
+        try {
+          resolvedLocation = await resolveLocationFromGPS(exifData.latitude, exifData.longitude);
+        } catch (err) {
+          console.error(err);
+          resolvedLocation = { error: err.message };
+        }
+
+        await hydrateMetadataPreview({
+          sourceMode: 'google-photos-link',
+          sourceUrl: resolvedUrl,
+          linkResolverMode: linkResolverMode.value,
+          note: Object.keys(exifData).length
+            ? null
+            : 'A imagem abriu pelo link, mas os metadados EXIF podem não estar acessíveis nesse modo.'
+        });
+
+        renderPolaroid();
+        generateBtn.disabled = false;
+        downloadBtn.disabled = false;
+      } catch (err) {
+        console.error(err);
+        metadataBox.textContent = JSON.stringify({
+          error: err.message,
+          hint: 'Se o link for uma página compartilhada do Google Photos e falhar, tente usar um link direto da imagem ou configurar um proxy CORS.'
+        }, null, 2);
+        renderPlaceholder();
+      } finally {
+        loadFromUrlBtn.disabled = false;
+      }
+    });
+
+    generateBtn.addEventListener('click', renderPolaroid);
+
+    downloadBtn.addEventListener('click', () => {
+      const link = document.createElement('a');
+      const safeTitle = (titleText.value || 'polaroid').trim().replace(/[^a-z0-9-_]+/gi, '-').toLowerCase();
+      link.download = `${safeTitle || 'polaroid'}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    });
+
+    [titleText, customText, rotationInput, locationFormat].forEach((el) => {
+      el.addEventListener('input', () => {
+        if (loadedImage) renderPolaroid();
+      });
+      el.addEventListener('change', () => {
+        if (loadedImage) renderPolaroid();
+      });
+    });
+
+    document.querySelectorAll('.check-grid input[type="checkbox"]').forEach((el) => {
+      el.addEventListener('change', () => {
+        if (loadedImage) renderPolaroid();
+      });
+    });
+
+    geoProvider.addEventListener('change', async () => {
+      googleApiKey.parentElement.style.display = geoProvider.value === 'google' ? 'grid' : 'none';
+      if (!loadedImage) return;
+      const sourceMode = googlePhotosUrl.value.trim() ? 'google-photos-link' : 'upload';
+      const sourceUrl = googlePhotosUrl.value.trim() || null;
+      await refreshResolvedLocationAndPreview(sourceMode, sourceUrl, sourceUrl ? linkResolverMode.value : null);
+    });
+
+    googleApiKey.addEventListener('change', async () => {
+      if (!loadedImage || geoProvider.value !== 'google') return;
+      const sourceMode = googlePhotosUrl.value.trim() ? 'google-photos-link' : 'upload';
+      const sourceUrl = googlePhotosUrl.value.trim() || null;
+      await refreshResolvedLocationAndPreview(sourceMode, sourceUrl, sourceUrl ? linkResolverMode.value : null);
+    });
+
+    linkResolverMode.addEventListener('change', () => {
+      if (!googlePhotosUrl.value.trim()) return;
+      metadataBox.textContent = 'Modo de resolução atualizado. Clique em “Abrir do link” para recarregar a imagem.';
+    });
+
+    googleApiKey.parentElement.style.display = 'none';
+
+    function runSelfTests() {
+      console.assert(formatExposure(0.01) === '1/100s', 'Teste: exposição fracionária');
+      console.assert(formatExposure(2) === '2s', 'Teste: exposição inteira');
+      console.assert(formatFNumber(2.8) === 'f/2.8', 'Teste: abertura');
+      console.assert(formatGPS(-23.55052, -46.63331) === '-23.55052, -46.63331', 'Teste: GPS');
+      console.assert(isLikelyDirectImageUrl('https://lh3.googleusercontent.com/abc=w2000') === true, 'Teste: link direto Google');
+      console.assert(isLikelyDirectImageUrl('https://photos.app.goo.gl/xyz') === false, 'Teste: link compartilhado não direto');
+      console.assert(normalizeProxyUrl('', 'https://exemplo.com/a.jpg') === 'https://exemplo.com/a.jpg', 'Teste: proxy vazio');
+      console.assert(
+        normalizeProxyUrl('https://cors.isomorphic-git.org', 'https://exemplo.com/a.jpg') === 'https://cors.isomorphic-git.org/https://exemplo.com/a.jpg',
+        'Teste: concatenação proxy'
+      );
+      console.assert(
+        formatResolvedLocation({ city: 'Lisboa', state: 'Lisboa', country: 'Portugal' }, 'short') === 'Lisboa, Lisboa, Portugal',
+        'Teste: localização curta'
+      );
+    }
+
+    runSelfTests();
+    renderPlaceholder();
+  </script>
+</body>
+</html>
