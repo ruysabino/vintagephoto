@@ -15,3 +15,6 @@ Gerador de imagens estilo Polaroid com leitura de metadados EXIF, localização 
   - Poeira
   - Carimbo retrô
 - Download em PNG
+
+
+Feito com 💙 por ruysabino
