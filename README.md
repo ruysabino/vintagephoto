@@ -1,4 +1,4 @@
-# 📸 Polaroid Generator 3.0
+# 📸 Polaroid Generator
 
 Gerador de imagens estilo Polaroid com leitura de metadados EXIF, localização e efeitos retrô. Totalmente feito com auxílio de IA generativa.
 
