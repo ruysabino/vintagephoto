@@ -4,6 +4,15 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Polaroid Generator 4.0</title>
+  <meta name="description" content="Crie polaroids retrô com EXIF, localização, modo WhatsApp, Google Photos, presets e exportação em PNG." />
+  <meta name="theme-color" content="#111827" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Polaroid 4.0" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <link rel="apple-touch-icon" href="icon-512.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Patrick+Hand&family=Special+Elite&display=swap" rel="stylesheet">
@@ -247,6 +256,7 @@
         <div class="panel-header">
           <h2>Preview ao vivo</h2>
           <div class="action-row">
+            <button id="installBtn" class="btn-secondary" type="button" hidden>Instalar app</button>
             <button id="generateBtn" class="btn-primary" type="button">Renderizar</button>
             <button id="downloadBtn" class="btn-secondary" type="button" disabled>Baixar PNG</button>
           </div>
@@ -308,6 +318,7 @@
     const geoProvider = document.getElementById('geoProvider');
     const googleApiKey = document.getElementById('googleApiKey');
     const generateBtn = document.getElementById('generateBtn');
+    const installBtn = document.getElementById('installBtn');
     const downloadBtn = document.getElementById('downloadBtn');
     const resetBtn = document.getElementById('resetBtn');
     const metadataStats = document.getElementById('metadataStats');
@@ -321,6 +332,7 @@
     let loadedImage = null;
     let exifData = {};
     let resolvedLocation = null;
+    let deferredInstallPrompt = null;
 
     function setStatus(text) { statusText.textContent = text; }
     function getCurrentSourceName() { return selectedFile?.name || loadedImage?.dataset?.sourceName || ''; }
@@ -675,6 +687,17 @@
     loadFromUrlBtn.addEventListener('click', async () => { try { await loadFromUrl(); } catch (err) { renderPlaceholder(); updateInspector({ sourceMode:'erro', note: err.message }); setStatus(`Erro: ${err.message}`); } });
     generateBtn.addEventListener('click', () => { if (!loadedImage) return; renderPolaroid(); updateInspector({ sourceMode: googlePhotosUrl.value.trim() ? 'google photos link' : 'upload local' }); setStatus('Renderização concluída.'); });
     downloadBtn.addEventListener('click', () => { if (!loadedImage) return; const a = document.createElement('a'); const safe = (titleText.value || 'polaroid').trim().replace(/[^a-z0-9-_]+/gi, '-').toLowerCase(); a.download = `${safe || 'polaroid'}-${outputOrientation.value}.png`; a.href = canvas.toDataURL('image/png'); a.click(); setStatus('PNG gerado para download.'); });
+    installBtn.addEventListener('click', async () => {
+      if (!deferredInstallPrompt) {
+        setStatus('A instalação não está disponível neste navegador ainda.');
+        return;
+      }
+      deferredInstallPrompt.prompt();
+      const choice = await deferredInstallPrompt.userChoice;
+      setStatus(choice.outcome === 'accepted' ? 'Instalação iniciada.' : 'Instalação cancelada.');
+      deferredInstallPrompt = null;
+      installBtn.hidden = true;
+    });
     resetBtn.addEventListener('click', resetApp);
 
     ['dragenter','dragover'].forEach(evt => dropzone.addEventListener(evt, (e) => { e.preventDefault(); e.stopPropagation(); dropzone.classList.add('dragover'); }));
@@ -689,6 +712,29 @@
     [geoProvider, googleApiKey].forEach(el => el.addEventListener('change', async () => { if (!loadedImage) return; await hydrateStateAndRender({ sourceMode: googlePhotosUrl.value.trim() ? 'google photos link' : 'upload local' }); }));
     tagInputs.forEach(input => input.addEventListener('change', () => { if (loadedImage) renderPolaroid(); }));
     presetButtons.forEach(button => button.addEventListener('click', () => { applyPreset(button.dataset.preset); if (loadedImage) { renderPolaroid(); updateInspector({ sourceMode: googlePhotosUrl.value.trim() ? 'google photos link' : 'upload local', note: `Preset aplicado: ${button.dataset.preset}.` }); } else { setStatus(`Preset preparado: ${button.dataset.preset}.`); } }));
+
+    window.addEventListener('beforeinstallprompt', (event) => {
+      event.preventDefault();
+      deferredInstallPrompt = event;
+      installBtn.hidden = false;
+      setStatus('App pronto para instalação.');
+    });
+
+    window.addEventListener('appinstalled', () => {
+      deferredInstallPrompt = null;
+      installBtn.hidden = true;
+      setStatus('App instalado com sucesso.');
+    });
+
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', async () => {
+        try {
+          await navigator.serviceWorker.register('./sw.js');
+        } catch (error) {
+          console.error('Falha ao registrar service worker:', error);
+        }
+      });
+    }
 
     function runSelfTests() {
       console.assert(isLikelyDirectImageUrl('https://lh3.googleusercontent.com/abc=w2000') === true, 'Teste link direto');
