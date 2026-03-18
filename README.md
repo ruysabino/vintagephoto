@@ -1,6 +1,6 @@
 # 📸 Polaroid Generator 3.0
 
-Gerador de imagens estilo Polaroid com leitura de metadados EXIF, localização e efeitos retrô.
+Gerador de imagens estilo Polaroid com leitura de metadados EXIF, localização e efeitos retrô. Totalmente feito com auxílio de IA generativa.
 
 ## 🚀 Features
 
@@ -15,15 +15,3 @@ Gerador de imagens estilo Polaroid com leitura de metadados EXIF, localização 
   - Poeira
   - Carimbo retrô
 - Download em PNG
-
-## 🌐 Deploy (GitHub Pages)
-
-1. Suba os arquivos para o repositório
-2. Vá em **Settings → Pages**
-3. Selecione:
-   - Source: `Deploy from a branch`
-   - Branch: `main`
-   - Folder: `/root`
-4. Salve
-
-Acesse:
