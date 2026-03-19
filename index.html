@@ -1,754 +1,1798 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Polaroid Generator 4.0</title>
-  <meta name="description" content="Crie polaroids retrô com EXIF, localização, modo WhatsApp, Google Photos, presets e exportação em PNG." />
-  <meta name="theme-color" content="#111827" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="Polaroid 4.0" />
-  <meta name="mobile-web-app-capable" content="yes" />
-  <link rel="manifest" href="manifest.webmanifest" />
-  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
-  <link rel="apple-touch-icon" href="icon-512.png" />
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Patrick+Hand&family=Special+Elite&display=swap" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/exifr/dist/lite.umd.js"></script>
-  <style>
-    :root {
-      --bg: #efe7db;
-      --panel: rgba(255,255,255,.72);
-      --line: rgba(55,65,81,.12);
-      --text: #1f2937;
-      --muted: #6b7280;
-      --accent: #111827;
-      --accent-soft: rgba(17,24,39,.08);
-      --shadow: 0 22px 50px rgba(31,41,55,.12);
-      --radius-xl: 28px;
-    }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      font-family: Inter, system-ui, sans-serif;
-      color: var(--text);
-      background:
-        radial-gradient(circle at top left, rgba(255,255,255,.65), transparent 30%),
-        radial-gradient(circle at bottom right, rgba(255,255,255,.45), transparent 24%),
-        linear-gradient(180deg, #f4ede2 0%, #ebe2d4 100%);
-    }
-    .shell { max-width: 1440px; margin: 0 auto; padding: 24px; }
-    .hero { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:20px; }
-    .hero h1 { margin:0; font-size:clamp(2rem,3vw,3.4rem); line-height:.98; letter-spacing:-.04em; }
-    .hero p { margin:10px 0 0; color:var(--muted); max-width:760px; line-height:1.55; }
-    .badge-row { display:flex; gap:10px; flex-wrap:wrap; margin-top:14px; }
-    .badge { padding:9px 12px; border-radius:999px; background:rgba(255,255,255,.55); border:1px solid rgba(255,255,255,.75); box-shadow:0 10px 22px rgba(0,0,0,.04); color:#374151; font-size:.82rem; font-weight:600; }
-    .layout { display:grid; grid-template-columns:480px minmax(0,1fr) 320px; gap:20px; align-items:start; }
-    .panel { background:var(--panel); backdrop-filter:blur(14px); border:1px solid rgba(255,255,255,.75); box-shadow:var(--shadow); border-radius:var(--radius-xl); overflow:hidden; }
-    .panel-header { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:18px 20px; border-bottom:1px solid var(--line); background:rgba(255,255,255,.45); }
-    .panel-header h2, .panel-header h3 { margin:0; font-size:1rem; }
-    .panel-body { padding:18px; display:grid; gap:18px; }
-    .stack { display:grid; gap:14px; }
-    .grid-2 { display:grid; gap:14px; grid-template-columns:repeat(2,minmax(0,1fr)); }
-    .grid-3 { display:grid; gap:12px; grid-template-columns:repeat(3,minmax(0,1fr)); }
-    .field { display:grid; gap:8px; }
-    .field label { font-size:.88rem; font-weight:700; color:#374151; }
-    input[type="text"], input[type="number"], input[type="range"], textarea, select, input[type="file"] {
-      width:100%; border:1px solid var(--line); background:rgba(255,255,255,.86); border-radius:14px; color:var(--text); font:inherit;
-    }
-    input[type="text"], input[type="number"], textarea, select, input[type="file"] { padding:12px 13px; }
-    input[type="range"] { padding:0; height:38px; background:transparent; }
-    textarea { min-height:92px; resize:vertical; }
-    .dropzone {
-      border:1.5px dashed rgba(17,24,39,.16); background:linear-gradient(180deg, rgba(255,255,255,.78), rgba(255,255,255,.58)); border-radius:24px; padding:18px; display:grid; gap:12px; transition:.2s ease;
-    }
-    .dropzone.dragover { border-color: rgba(17,24,39,.45); background: linear-gradient(180deg, rgba(255,255,255,.95), rgba(255,255,255,.72)); transform: scale(1.01); }
-    .dropzone-top { display:flex; gap:14px; align-items:center; }
-    .drop-ico { width:46px; height:46px; border-radius:16px; display:grid; place-items:center; background:var(--accent-soft); font-size:1.3rem; }
-    .dropzone strong { display:block; font-size:.98rem; }
-    .dropzone span { color:var(--muted); font-size:.86rem; line-height:1.4; }
-    .toggle-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
-    .toggle, .tag-chip {
-      display:flex; align-items:center; gap:10px; border:1px solid var(--line); background:rgba(255,255,255,.82); border-radius:14px; padding:11px 12px; min-height:48px;
-    }
-    .toggle span, .tag-chip span { font-size:.9rem; font-weight:600; color:#374151; }
-    .tag-list { display:grid; gap:10px; grid-template-columns:repeat(2,minmax(0,1fr)); }
-    .action-row { display:flex; flex-wrap:wrap; gap:10px; }
-    button { appearance:none; border:0; border-radius:999px; padding:12px 16px; font:inherit; font-weight:700; cursor:pointer; transition:transform .15s ease, opacity .15s ease, box-shadow .15s ease; }
-    button:hover:not(:disabled) { transform:translateY(-1px); box-shadow:0 10px 20px rgba(0,0,0,.08); }
-    button:disabled { opacity:.5; cursor:not-allowed; }
-    .btn-primary { background:var(--accent); color:white; }
-    .btn-secondary { background:rgba(255,255,255,.9); color:var(--text); border:1px solid var(--line); }
-    .btn-ghost { background:transparent; color:var(--muted); }
-    .canvas-wrap { padding:20px; display:grid; gap:16px; }
-    .stage { background:linear-gradient(180deg,#ece4d7,#ddd1c0); border-radius:28px; padding:20px; box-shadow:inset 0 0 0 1px rgba(0,0,0,.04); position:relative; overflow:hidden; min-height:760px; }
-    .stage::before { content:""; position:absolute; inset:0; background:radial-gradient(circle at 20% 10%, rgba(255,255,255,.4), transparent 18%), radial-gradient(circle at 80% 90%, rgba(255,255,255,.28), transparent 20%); pointer-events:none; }
-    canvas { position:relative; width:100%; height:auto; display:block; border-radius:22px; background:transparent; }
-    .quick-styles { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; }
-    .preset { border-radius:18px; padding:12px; border:1px solid var(--line); background:rgba(255,255,255,.72); text-align:left; font-size:.86rem; line-height:1.25; color:var(--text); }
-    .preset small { display:block; color:var(--muted); margin-top:4px; }
-    .stat-list { display:grid; gap:10px; }
-    .stat { border-radius:16px; background:rgba(255,255,255,.78); border:1px solid var(--line); padding:12px 13px; }
-    .stat b { display:block; font-size:.76rem; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin-bottom:5px; }
-    .stat span { display:block; font-size:.92rem; line-height:1.4; overflow-wrap:anywhere; }
-    .mini-note { padding:12px 13px; border-radius:16px; background:rgba(17,24,39,.05); color:#4b5563; font-size:.86rem; line-height:1.5; }
-    .footer-actions { display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-top:4px; }
-    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
-    @media (max-width:1220px) { .layout { grid-template-columns:1fr; } .stage { min-height:unset; } }
-    @media (max-width:720px) { .grid-2, .grid-3, .tag-list, .toggle-grid, .quick-styles { grid-template-columns:1fr; } .shell { padding:16px; } .panel-header { padding:16px; } .panel-body, .canvas-wrap { padding:14px; } }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Polaroid Generator 5.0</title>
+<meta name="description" content="Gerador de imagens estilo Polaroid com EXIF, GPS e efeitos retrô." />
+<meta name="theme-color" content="#1a1008" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Polaroid 5.0" />
+<meta name="mobile-web-app-capable" content="yes" />
+<link rel="manifest" href="manifest.webmanifest" />
+<link rel="icon" type="image/svg+xml" href="favicon.svg" />
+<link rel="apple-touch-icon" href="icon-512.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Caveat:wght@400;600&family=Special+Elite&family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/exifr/dist/lite.umd.js"></script>
+
+<style>
+/* ─── Design tokens ────────────────────────────────────────── */
+:root {
+  --bg0: #1a1008;
+  --bg1: #241708;
+  --bg2: #2e1e0a;
+  --panel: rgba(36,23,8,.88);
+  --panel-border: rgba(255,220,140,.10);
+  --line: rgba(255,220,140,.12);
+  --text: #f0e6d0;
+  --muted: #9a8060;
+  --accent: #d4a843;
+  --accent-dim: rgba(212,168,67,.15);
+  --accent-glow: rgba(212,168,67,.06);
+  --danger: #c0392b;
+  --success: #27ae60;
+  --radius: 14px;
+  --radius-lg: 22px;
+  --shadow: 0 24px 60px rgba(0,0,0,.55);
+  --shadow-sm: 0 4px 16px rgba(0,0,0,.35);
+  --font-body: 'Courier Prime', 'Courier New', monospace;
+  --font-display: 'DM Serif Display', Georgia, serif;
+  --font-hand: 'Caveat', cursive;
+  --font-type: 'Special Elite', serif;
+  --transition: .2s cubic-bezier(.4,0,.2,1);
+}
+
+/* ─── Reset & base ─────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--font-body);
+  background: var(--bg0);
+  color: var(--text);
+  min-height: 100vh;
+  background-image:
+    radial-gradient(ellipse 80% 50% at 20% -10%, rgba(212,168,67,.08), transparent),
+    radial-gradient(ellipse 60% 40% at 80% 110%, rgba(180,100,20,.06), transparent);
+}
+
+/* ─── Shell & layout ───────────────────────────────────────── */
+.shell { max-width: 1480px; margin: 0 auto; padding: 28px 24px; }
+
+.header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 32px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--line);
+}
+.header-title { font-family: var(--font-display); font-size: clamp(2.4rem,4vw,3.8rem); line-height: .95; letter-spacing: -.02em; color: var(--text); }
+.header-title em { font-style: italic; color: var(--accent); }
+.header-sub { color: var(--muted); font-size: .85rem; max-width: 380px; line-height: 1.6; margin-top: 8px; }
+
+.badge-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.badge {
+  padding: 5px 11px; border-radius: 99px;
+  border: 1px solid var(--panel-border);
+  background: var(--accent-dim);
+  color: var(--accent);
+  font-size: .74rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+}
+
+/* ─── Main layout grid ─────────────────────────────────────── */
+.layout {
+  display: grid;
+  grid-template-columns: 420px minmax(0,1fr) 300px;
+  gap: 20px;
+  align-items: start;
+}
+
+/* ─── Panel ────────────────────────────────────────────────── */
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-lg);
+  backdrop-filter: blur(12px);
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--line);
+  background: rgba(255,220,140,.03);
+}
+.panel-header h2, .panel-header h3 {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  color: var(--text);
+  font-weight: 400;
+}
+.panel-header-icon { color: var(--accent); font-size: .9rem; }
+
+.panel-body { padding: 20px; display: grid; gap: 18px; }
+
+/* ─── Form elements ────────────────────────────────────────── */
+.stack { display: grid; gap: 14px; }
+.grid-2 { display: grid; gap: 14px; grid-template-columns: repeat(2, minmax(0,1fr)); }
+.grid-3 { display: grid; gap: 12px; grid-template-columns: repeat(3, minmax(0,1fr)); }
+
+.field { display: grid; gap: 6px; }
+.field label { font-size: .78rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+
+input[type="text"],
+input[type="number"],
+textarea,
+select {
+  width: 100%;
+  padding: 11px 14px;
+  border: 1px solid var(--line);
+  background: rgba(255,255,255,.04);
+  border-radius: var(--radius);
+  color: var(--text);
+  font: inherit;
+  font-size: .9rem;
+  transition: border-color var(--transition), box-shadow var(--transition);
+  outline: none;
+}
+input[type="text"]:focus,
+input[type="number"]:focus,
+textarea:focus,
+select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-dim);
+}
+select option { background: #1a1008; color: var(--text); }
+textarea { min-height: 80px; resize: vertical; }
+
+input[type="range"] {
+  width: 100%;
+  height: 4px;
+  background: var(--line);
+  border-radius: 99px;
+  appearance: none;
+  outline: none;
+  cursor: pointer;
+}
+input[type="range"]::-webkit-slider-thumb {
+  appearance: none;
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 3px solid var(--bg0);
+  box-shadow: 0 2px 8px rgba(0,0,0,.4);
+}
+.range-wrap { display: grid; gap: 6px; }
+.range-labels { display: flex; justify-content: space-between; font-size: .72rem; color: var(--muted); }
+
+/* ─── Dropzone ─────────────────────────────────────────────── */
+.dropzone {
+  border: 1.5px dashed rgba(212,168,67,.3);
+  background: var(--accent-glow);
+  border-radius: var(--radius-lg);
+  padding: 28px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  transition: border-color var(--transition), background var(--transition), transform var(--transition);
+  text-align: center;
+}
+.dropzone:hover, .dropzone.dragover {
+  border-color: var(--accent);
+  background: var(--accent-dim);
+  transform: scale(1.01);
+}
+.drop-ico {
+  width: 52px; height: 52px;
+  border-radius: 16px;
+  background: var(--accent-dim);
+  border: 1px solid rgba(212,168,67,.3);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.4rem;
+}
+.dropzone strong { font-family: var(--font-display); font-size: 1rem; color: var(--text); font-weight: 400; }
+.dropzone span { color: var(--muted); font-size: .8rem; line-height: 1.5; }
+.dropzone input[type="file"] { display: none; }
+
+/* ─── Toggles ──────────────────────────────────────────────── */
+.toggle-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px; }
+
+.toggle {
+  display: flex; align-items: center; gap: 10px;
+  border: 1px solid var(--line);
+  background: rgba(255,255,255,.03);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: border-color var(--transition), background var(--transition);
+}
+.toggle:hover { border-color: rgba(212,168,67,.3); background: var(--accent-glow); }
+.toggle input[type="checkbox"] { display: none; }
+.toggle-dot {
+  width: 32px; height: 18px;
+  border-radius: 99px;
+  background: rgba(255,255,255,.1);
+  border: 1px solid var(--line);
+  position: relative;
+  flex-shrink: 0;
+  transition: background var(--transition), border-color var(--transition);
+}
+.toggle-dot::after {
+  content: '';
+  position: absolute;
+  top: 2px; left: 2px;
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  background: var(--muted);
+  transition: transform var(--transition), background var(--transition);
+}
+.toggle input:checked ~ .toggle-dot { background: var(--accent-dim); border-color: var(--accent); }
+.toggle input:checked ~ .toggle-dot::after { transform: translateX(14px); background: var(--accent); }
+.toggle-label { font-size: .82rem; color: var(--text); line-height: 1.3; }
+
+/* ─── Tag chips ─────────────────────────────────────────────── */
+.tag-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 7px; }
+
+.tag-chip {
+  display: flex; align-items: center; gap: 8px;
+  border: 1px solid var(--line);
+  background: rgba(255,255,255,.03);
+  border-radius: 10px;
+  padding: 8px 10px;
+  cursor: pointer;
+  transition: border-color var(--transition), background var(--transition);
+  font-size: .8rem; color: var(--muted);
+}
+.tag-chip:hover { border-color: rgba(212,168,67,.3); color: var(--text); }
+.tag-chip input { display: none; }
+.tag-chip-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  border: 1px solid var(--muted);
+  flex-shrink: 0;
+  transition: background var(--transition), border-color var(--transition);
+}
+.tag-chip input:checked ~ .tag-chip-dot { background: var(--accent); border-color: var(--accent); }
+.tag-chip input:checked ~ span { color: var(--text); }
+
+/* ─── Buttons ───────────────────────────────────────────────── */
+button {
+  appearance: none; border: 0; border-radius: 99px;
+  padding: 11px 18px;
+  font: inherit; font-size: .85rem; font-weight: 700;
+  cursor: pointer;
+  transition: transform var(--transition), box-shadow var(--transition), opacity var(--transition);
+  letter-spacing: .04em;
+}
+button:hover:not(:disabled) { transform: translateY(-1px); }
+button:active:not(:disabled) { transform: translateY(0); }
+button:disabled { opacity: .4; cursor: not-allowed; }
+
+.btn-primary {
+  background: var(--accent);
+  color: var(--bg0);
+  box-shadow: 0 4px 20px rgba(212,168,67,.3);
+}
+.btn-primary:hover:not(:disabled) { box-shadow: 0 6px 28px rgba(212,168,67,.45); }
+
+.btn-secondary {
+  background: rgba(255,255,255,.06);
+  color: var(--text);
+  border: 1px solid var(--line);
+}
+.btn-secondary:hover:not(:disabled) { background: rgba(255,255,255,.1); }
+
+.btn-ghost { background: transparent; color: var(--muted); }
+.btn-ghost:hover:not(:disabled) { color: var(--text); }
+
+.btn-danger {
+  background: rgba(192,57,43,.15);
+  color: #e74c3c;
+  border: 1px solid rgba(192,57,43,.3);
+}
+
+.action-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+/* ─── Preset buttons ────────────────────────────────────────── */
+.preset-grid { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 8px; }
+
+.preset {
+  border-radius: var(--radius);
+  padding: 10px 8px;
+  border: 1px solid var(--line);
+  background: rgba(255,255,255,.03);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--transition), background var(--transition);
+}
+.preset:hover { border-color: rgba(212,168,67,.4); background: var(--accent-glow); }
+.preset.active { border-color: var(--accent); background: var(--accent-dim); }
+.preset-name { font-size: .82rem; color: var(--text); font-weight: 700; display: block; }
+.preset-desc { font-size: .72rem; color: var(--muted); display: block; margin-top: 3px; line-height: 1.3; }
+
+/* ─── Canvas area ───────────────────────────────────────────── */
+.canvas-wrap { padding: 20px; display: grid; gap: 16px; }
+
+.stage {
+  background:
+    radial-gradient(ellipse at 30% 20%, rgba(212,168,67,.04), transparent 60%),
+    #0f0a04;
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 600px;
+  position: relative;
+}
+
+canvas {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+  box-shadow: 0 30px 80px rgba(0,0,0,.7), 0 0 0 1px rgba(255,255,255,.04);
+}
+
+.footer-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.status-text {
+  font-size: .78rem;
+  color: var(--muted);
+  font-family: var(--font-body);
+}
+.status-text.ok { color: var(--success); }
+.status-text.err { color: var(--danger); }
+
+/* ─── Inspector ─────────────────────────────────────────────── */
+.stat-list { display: grid; gap: 8px; }
+.stat {
+  border-radius: var(--radius);
+  background: rgba(255,255,255,.03);
+  border: 1px solid var(--line);
+  padding: 10px 12px;
+}
+.stat b {
+  display: block;
+  font-size: .68rem;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  color: var(--muted);
+  margin-bottom: 3px;
+  font-weight: 700;
+}
+.stat span {
+  display: block;
+  font-size: .85rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  color: var(--text);
+}
+
+.hint-box {
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  background: var(--accent-glow);
+  border: 1px solid rgba(212,168,67,.15);
+  color: var(--muted);
+  font-size: .8rem;
+  line-height: 1.6;
+}
+
+/* ─── Divider ───────────────────────────────────────────────── */
+.divider {
+  display: flex; align-items: center; gap: 10px;
+  color: var(--muted); font-size: .7rem; text-transform: uppercase; letter-spacing: .1em;
+}
+.divider::before, .divider::after {
+  content: ''; flex: 1;
+  height: 1px; background: var(--line);
+}
+
+/* ─── Toast / error banner ──────────────────────────────────── */
+.toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+  background: var(--danger);
+  color: #fff;
+  padding: 12px 24px;
+  border-radius: 99px;
+  font-size: .85rem;
+  font-weight: 700;
+  box-shadow: 0 8px 32px rgba(0,0,0,.4);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .3s;
+  z-index: 1000;
+  white-space: nowrap;
+}
+.toast.show { opacity: 1; }
+
+/* ─── Spinner ───────────────────────────────────────────────── */
+.spinner {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(15,10,4,.7);
+  border-radius: var(--radius-lg);
+  opacity: 0; pointer-events: none; transition: opacity .25s;
+  z-index: 10;
+}
+.spinner.show { opacity: 1; }
+.spinner-ring {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  border: 3px solid rgba(212,168,67,.2);
+  border-top-color: var(--accent);
+  animation: spin .8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ─── Responsive ────────────────────────────────────────────── */
+@media (max-width: 1200px) {
+  .layout { grid-template-columns: 380px minmax(0,1fr); }
+  .layout > aside { display: none; }
+}
+@media (max-width: 820px) {
+  .layout { grid-template-columns: 1fr; }
+  .preset-grid { grid-template-columns: repeat(2,1fr); }
+  .shell { padding: 16px; }
+  .stage { min-height: 340px; padding: 14px; }
+}
+@media (max-width: 500px) {
+  .grid-2, .grid-3, .toggle-grid, .tag-grid { grid-template-columns: 1fr; }
+}
+</style>
 </head>
+
 <body>
-  <div class="shell">
-    <section class="hero">
-      <div>
-        <h1>Polaroid Generator 4.0</h1>
-        <p>Agora com drag & drop real e escolha de orientação final em retrato ou paisagem, além da composição retrô com EXIF, GPS, presets, Google Photos e modo WhatsApp.</p>
-        <div class="badge-row">
-          <span class="badge">Drag & Drop</span>
-          <span class="badge">Retrato ou Paisagem</span>
-          <span class="badge">Default retrô incluído</span>
-          <span class="badge">Canvas em tempo real</span>
+<div class="shell">
+
+  <!-- Header -->
+  <header class="header">
+    <div>
+      <h1 class="header-title">Polaroid <em>Generator</em></h1>
+      <p class="header-sub">Crie polaroids autênticas com EXIF, GPS e efeitos retrô. Moldura real com foto acima e legenda abaixo.</p>
+      <div class="badge-row" style="margin-top:14px;">
+        <span class="badge">EXIF automático</span>
+        <span class="badge">GPS → Localização</span>
+        <span class="badge">Moldura real</span>
+        <span class="badge">PWA offline</span>
+      </div>
+    </div>
+    <button id="installBtn" class="btn-secondary" type="button" hidden>⊕ Instalar app</button>
+  </header>
+
+  <main class="layout">
+
+    <!-- ════════════ PAINEL ESQUERDO — CONTROLOS ════════════ -->
+    <section class="panel" id="controlPanel">
+      <div class="panel-header">
+        <h2>Configuração</h2>
+        <button id="resetBtn" class="btn-ghost" type="button" title="Resetar tudo">↺ Resetar</button>
+      </div>
+      <div class="panel-body">
+
+        <!-- Upload -->
+        <div class="dropzone" id="dropzone">
+          <div class="drop-ico">🎞</div>
+          <strong>Solte a foto aqui</strong>
+          <span>ou clique para escolher um arquivo<br>JPEG preserva o EXIF completo</span>
+          <input id="imageInput" type="file" accept="image/*">
+        </div>
+
+        <!-- Orientação & Moldura -->
+        <div class="grid-2">
+          <div class="field">
+            <label for="outputOrientation">Orientação</label>
+            <select id="outputOrientation">
+              <option value="portrait" selected>Retrato</option>
+              <option value="landscape">Paisagem</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="frameTone">Tom da moldura</label>
+            <select id="frameTone">
+              <option value="warm" selected>Ivory quente</option>
+              <option value="white">Branco puro</option>
+              <option value="cream">Creme suave</option>
+              <option value="charcoal">Moldura escura</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Título & fonte -->
+        <div class="grid-2">
+          <div class="field">
+            <label for="titleText">Título / legenda</label>
+            <input id="titleText" type="text" value="Minha Polaroid" placeholder="Texto principal">
+          </div>
+          <div class="field">
+            <label for="fontSelect">Tipografia</label>
+            <select id="fontSelect">
+              <option value="default" selected>Clássica retrô</option>
+              <option value="hand">Manuscrita</option>
+              <option value="type">Máquina de escrever</option>
+              <option value="clean">Minimal</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Texto manual -->
+        <div class="field">
+          <label for="customText">Texto adicional (opcional)</label>
+          <textarea id="customText" placeholder="Ex.: fim de tarde em Lisboa • café, filme e caminhada"></textarea>
+        </div>
+
+        <!-- Inclinação -->
+        <div class="field">
+          <label for="rotation">Inclinação da foto: <span id="rotationVal">-4°</span></label>
+          <div class="range-wrap">
+            <input id="rotation" type="range" min="-15" max="15" step="1" value="-4">
+            <div class="range-labels"><span>-15°</span><span>0°</span><span>+15°</span></div>
+          </div>
+        </div>
+
+        <div class="divider">Efeitos visuais</div>
+
+        <!-- Toggles de efeitos -->
+        <div class="toggle-grid">
+          <label class="toggle">
+            <input id="showTape" type="checkbox" checked>
+            <span class="toggle-dot"></span>
+            <span class="toggle-label">Fita decorativa</span>
+          </label>
+          <label class="toggle">
+            <input id="effectSepia" type="checkbox">
+            <span class="toggle-dot"></span>
+            <span class="toggle-label">Filtro sépia</span>
+          </label>
+          <label class="toggle">
+            <input id="effectGrain" type="checkbox">
+            <span class="toggle-dot"></span>
+            <span class="toggle-label">Grão de filme</span>
+          </label>
+          <label class="toggle">
+            <input id="effectStamp" type="checkbox">
+            <span class="toggle-dot"></span>
+            <span class="toggle-label">Carimbo retrô</span>
+          </label>
+          <label class="toggle">
+            <input id="effectDust" type="checkbox">
+            <span class="toggle-dot"></span>
+            <span class="toggle-label">Poeira de filme</span>
+          </label>
+          <label class="toggle">
+            <input id="isWhatsappImage" type="checkbox">
+            <span class="toggle-dot"></span>
+            <span class="toggle-label">Foto do WhatsApp</span>
+          </label>
+        </div>
+
+        <div class="divider">Metadados EXIF</div>
+
+        <!-- Tags EXIF -->
+        <div class="tag-grid" id="tagList">
+          <label class="tag-chip"><input type="checkbox" value="DateTimeOriginal" checked><span class="tag-chip-dot"></span><span>Data</span></label>
+          <label class="tag-chip"><input type="checkbox" value="ResolvedLocation" checked><span class="tag-chip-dot"></span><span>Localização</span></label>
+          <label class="tag-chip"><input type="checkbox" value="Model" checked><span class="tag-chip-dot"></span><span>Câmera</span></label>
+          <label class="tag-chip"><input type="checkbox" value="LensModel"><span class="tag-chip-dot"></span><span>Lente</span></label>
+          <label class="tag-chip"><input type="checkbox" value="ISO" checked><span class="tag-chip-dot"></span><span>ISO</span></label>
+          <label class="tag-chip"><input type="checkbox" value="FNumber" checked><span class="tag-chip-dot"></span><span>Abertura</span></label>
+          <label class="tag-chip"><input type="checkbox" value="ExposureTime" checked><span class="tag-chip-dot"></span><span>Exposição</span></label>
+          <label class="tag-chip"><input type="checkbox" value="FocalLength"><span class="tag-chip-dot"></span><span>Focal</span></label>
+          <label class="tag-chip"><input type="checkbox" value="GPS"><span class="tag-chip-dot"></span><span>GPS bruto</span></label>
+          <label class="tag-chip"><input type="checkbox" value="Make"><span class="tag-chip-dot"></span><span>Fabricante</span></label>
+        </div>
+
+        <!-- Localização -->
+        <div class="grid-2">
+          <div class="field">
+            <label for="locationFormat">Formato da localização</label>
+            <select id="locationFormat">
+              <option value="short" selected>Cidade, estado, país</option>
+              <option value="medium">Bairro, cidade, estado</option>
+              <option value="full">Endereço completo</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="geoProvider">Geocoding</label>
+            <select id="geoProvider">
+              <option value="osm" selected>OpenStreetMap (padrão)</option>
+              <option value="none">Desativado</option>
+            </select>
+          </div>
+        </div>
+
+      </div><!-- /panel-body -->
+    </section><!-- /left panel -->
+
+    <!-- ════════════ PAINEL CENTRAL — PREVIEW ════════════ -->
+    <section class="panel">
+      <div class="panel-header">
+        <h2>Preview ao vivo</h2>
+        <div class="action-row">
+          <button id="generateBtn" class="btn-primary" type="button">▶ Renderizar</button>
+          <button id="downloadBtn" class="btn-secondary" type="button" disabled>⬇ PNG</button>
         </div>
       </div>
-    </section>
 
-    <main class="layout">
-      <section class="panel">
-        <div class="panel-header">
-          <h2>Entrada & composição</h2>
-          <button id="resetBtn" class="btn-ghost" type="button">Resetar</button>
+      <div class="canvas-wrap">
+        <!-- Presets -->
+        <div class="preset-grid" id="presetGrid">
+          <button class="preset active" type="button" data-preset="classic">
+            <span class="preset-name">Classic</span>
+            <span class="preset-desc">equilibrado e limpo</span>
+          </button>
+          <button class="preset" type="button" data-preset="scrapbook">
+            <span class="preset-name">Scrapbook</span>
+            <span class="preset-desc">fita + manuscrita</span>
+          </button>
+          <button class="preset" type="button" data-preset="cinema">
+            <span class="preset-name">Cinema</span>
+            <span class="preset-desc">dark + carimbo</span>
+          </button>
+          <button class="preset" type="button" data-preset="summer">
+            <span class="preset-name">Summer</span>
+            <span class="preset-desc">leve e quente</span>
+          </button>
         </div>
-        <div class="panel-body">
-          <div class="dropzone" id="dropzone">
-            <div class="dropzone-top">
-              <div class="drop-ico">🖼️</div>
-              <div>
-                <strong>Arraste e solte sua imagem aqui</strong>
-                <span>Ou clique para escolher um arquivo. JPEG costuma preservar EXIF melhor.</span>
-              </div>
-            </div>
-            <input id="imageInput" type="file" accept="image/*">
-          </div>
 
-          <div class="stack">
-            <div class="field">
-              <label for="googlePhotosUrl">Ou abra via link do Google Photos</label>
-              <input id="googlePhotosUrl" type="text" placeholder="Cole um link público ou um link direto da imagem">
-            </div>
-            <div class="grid-2">
-              <div class="field">
-                <label for="linkResolverMode">Resolver link</label>
-                <select id="linkResolverMode">
-                  <option value="auto" selected>Automático</option>
-                  <option value="direct">Assumir link direto</option>
-                  <option value="page">Extrair da página compartilhada</option>
-                </select>
-              </div>
-              <div class="field">
-                <label for="corsProxyUrl">Proxy CORS opcional</label>
-                <input id="corsProxyUrl" type="text" placeholder="Ex.: https://cors.isomorphic-git.org/">
-              </div>
-            </div>
-            <div class="action-row">
-              <button id="loadFromUrlBtn" class="btn-secondary" type="button">Abrir do link</button>
-            </div>
-          </div>
-
-          <div class="grid-2">
-            <div class="field">
-              <label for="outputOrientation">Orientação da polaroid</label>
-              <select id="outputOrientation">
-                <option value="portrait" selected>Retrato</option>
-                <option value="landscape">Paisagem</option>
-              </select>
-            </div>
-            <div class="field">
-              <label for="frameTone">Tom da moldura</label>
-              <select id="frameTone">
-                <option value="warm" selected>Warm ivory</option>
-                <option value="white">Classic white</option>
-                <option value="cream">Soft cream</option>
-                <option value="charcoal">Dark frame</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="toggle-grid">
-            <label class="toggle"><input id="isWhatsappImage" type="checkbox"><span>Foto vinda do WhatsApp</span></label>
-            <label class="toggle"><input id="showTape" type="checkbox" checked><span>Adicionar fita decorativa</span></label>
-            <label class="toggle"><input id="effectSepia" type="checkbox"><span>Filtro vintage sépia</span></label>
-            <label class="toggle"><input id="effectGrain" type="checkbox"><span>Textura de desgaste</span></label>
-            <label class="toggle"><input id="effectStamp" type="checkbox"><span>Carimbo retrô</span></label>
-            <label class="toggle"><input id="effectDust" type="checkbox"><span>Poeira de filme</span></label>
-          </div>
-
-          <div class="field">
-            <label>Tags de metadados visíveis</label>
-            <div class="tag-list">
-              <label class="tag-chip"><input type="checkbox" value="DateTimeOriginal" checked><span>Data</span></label>
-              <label class="tag-chip"><input type="checkbox" value="ResolvedLocation" checked><span>Localização</span></label>
-              <label class="tag-chip"><input type="checkbox" value="Model" checked><span>Câmera</span></label>
-              <label class="tag-chip"><input type="checkbox" value="LensModel"><span>Lente</span></label>
-              <label class="tag-chip"><input type="checkbox" value="ISO" checked><span>ISO</span></label>
-              <label class="tag-chip"><input type="checkbox" value="FNumber" checked><span>Abertura</span></label>
-              <label class="tag-chip"><input type="checkbox" value="ExposureTime" checked><span>Exposição</span></label>
-              <label class="tag-chip"><input type="checkbox" value="FocalLength"><span>Focal</span></label>
-              <label class="tag-chip"><input type="checkbox" value="GPS"><span>GPS bruto</span></label>
-              <label class="tag-chip"><input type="checkbox" value="Make"><span>Fabricante</span></label>
-            </div>
-          </div>
-
-          <div class="grid-2">
-            <div class="field">
-              <label for="titleText">Título da polaroid</label>
-              <input id="titleText" type="text" value="Minha Polaroid">
-            </div>
-            <div class="field">
-              <label for="fontSelect">Estilo da tipografia</label>
-              <select id="fontSelect">
-                <option value="default" selected>Default retrô</option>
-                <option value="hand">Handwriting</option>
-                <option value="type">Typewriter</option>
-                <option value="clean">Minimal clean</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="field">
-            <label for="customText">Texto manual opcional</label>
-            <textarea id="customText" placeholder="Ex.: Fim de tarde em Lisboa • café, filme e caminhada"></textarea>
-          </div>
-
-          <div class="grid-3">
-            <div class="field">
-              <label for="rotation">Inclinação</label>
-              <input id="rotation" type="range" min="-15" max="15" step="1" value="-4">
-            </div>
-            <div class="field">
-              <label for="locationFormat">Formato da localização</label>
-              <select id="locationFormat">
-                <option value="short" selected>Cidade, estado, país</option>
-                <option value="medium">Bairro, cidade, estado, país</option>
-                <option value="full">Endereço completo</option>
-              </select>
-            </div>
-            <div class="field">
-              <label for="geoProvider">Serviço de geolocalização</label>
-              <select id="geoProvider">
-                <option value="none">Não buscar localização</option>
-                <option value="osm" selected>OpenStreetMap / Nominatim</option>
-                <option value="google">Google Maps Geocoding</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="field">
-            <label for="googleApiKey">Google Maps API Key</label>
-            <input id="googleApiKey" type="text" placeholder="Necessária se usar Google Maps">
-          </div>
+        <!-- Stage com canvas -->
+        <div class="stage" id="stage">
+          <div class="spinner" id="spinner"><div class="spinner-ring"></div></div>
+          <canvas id="canvas" width="1200" height="1500"></canvas>
         </div>
-      </section>
 
-      <section class="panel">
-        <div class="panel-header">
-          <h2>Preview ao vivo</h2>
+        <!-- Barra de status -->
+        <div class="footer-bar">
+          <span class="status-text" id="statusText">Aguardando imagem…</span>
           <div class="action-row">
-            <button id="installBtn" class="btn-secondary" type="button" hidden>Instalar app</button>
-            <button id="generateBtn" class="btn-primary" type="button">Renderizar</button>
-            <button id="downloadBtn" class="btn-secondary" type="button" disabled>Baixar PNG</button>
+            <span id="dimensionBadge" class="badge" style="display:none;"></span>
           </div>
         </div>
-        <div class="canvas-wrap">
-          <div class="quick-styles">
-            <button class="preset" type="button" data-preset="classic">Classic <small>equilibrado e limpo</small></button>
-            <button class="preset" type="button" data-preset="scrapbook">Scrapbook <small>fita + handwriting</small></button>
-            <button class="preset" type="button" data-preset="cinema">Cinema <small>dark + stamp</small></button>
-            <button class="preset" type="button" data-preset="summer">Summer <small>leve e quente</small></button>
-          </div>
-          <div class="stage">
-            <canvas id="canvas" width="1400" height="1700"></canvas>
-          </div>
-          <div class="footer-actions">
-            <div class="mini-note">Dica: altere para paisagem para criar polaroids horizontais com rodapé lateralmente otimizado.</div>
-            <div class="mini-note mono" id="statusText">Aguardando imagem…</div>
-          </div>
+      </div>
+    </section><!-- /center panel -->
+
+    <!-- ════════════ PAINEL DIREITO — INSPECTOR ════════════ -->
+    <aside class="panel">
+      <div class="panel-header">
+        <h3>Inspector EXIF</h3>
+        <span class="badge" id="sourceBadge">sem fonte</span>
+      </div>
+      <div class="panel-body">
+        <div class="stat-list" id="metadataStats">
+          <div class="stat"><b>Status</b><span>Nenhuma imagem carregada.</span></div>
         </div>
-      </section>
-
-      <aside class="panel">
-        <div class="panel-header">
-          <h3>Inspector</h3>
-          <span class="badge" id="sourceBadge">sem fonte</span>
+        <div class="hint-box" id="hintBox">
+          A moldura Polaroid real: foto na parte superior e espaço branco generoso abaixo para o texto com os metadados EXIF.
         </div>
-        <div class="panel-body">
-          <div class="stat-list" id="metadataStats">
-            <div class="stat"><b>Status</b><span>Nenhuma imagem carregada.</span></div>
-          </div>
-          <div class="mini-note" id="hintBox">A versão 4.0 adiciona drag & drop e permite decidir a orientação final do layout antes de exportar.</div>
-        </div>
-      </aside>
-    </main>
-  </div>
+      </div>
+    </aside>
 
-  <script>
-    const canvas = document.getElementById('canvas');
-    const ctx = canvas.getContext('2d');
-    const dropzone = document.getElementById('dropzone');
-    const imageInput = document.getElementById('imageInput');
-    const googlePhotosUrl = document.getElementById('googlePhotosUrl');
-    const loadFromUrlBtn = document.getElementById('loadFromUrlBtn');
-    const linkResolverMode = document.getElementById('linkResolverMode');
-    const corsProxyUrl = document.getElementById('corsProxyUrl');
-    const outputOrientation = document.getElementById('outputOrientation');
-    const isWhatsappImage = document.getElementById('isWhatsappImage');
-    const showTape = document.getElementById('showTape');
-    const effectSepia = document.getElementById('effectSepia');
-    const effectGrain = document.getElementById('effectGrain');
-    const effectStamp = document.getElementById('effectStamp');
-    const effectDust = document.getElementById('effectDust');
-    const titleText = document.getElementById('titleText');
-    const fontSelect = document.getElementById('fontSelect');
-    const customText = document.getElementById('customText');
-    const rotation = document.getElementById('rotation');
-    const frameTone = document.getElementById('frameTone');
-    const locationFormat = document.getElementById('locationFormat');
-    const geoProvider = document.getElementById('geoProvider');
-    const googleApiKey = document.getElementById('googleApiKey');
-    const generateBtn = document.getElementById('generateBtn');
-    const installBtn = document.getElementById('installBtn');
-    const downloadBtn = document.getElementById('downloadBtn');
-    const resetBtn = document.getElementById('resetBtn');
-    const metadataStats = document.getElementById('metadataStats');
-    const statusText = document.getElementById('statusText');
-    const sourceBadge = document.getElementById('sourceBadge');
-    const hintBox = document.getElementById('hintBox');
-    const tagInputs = Array.from(document.querySelectorAll('.tag-list input[type="checkbox"]'));
-    const presetButtons = Array.from(document.querySelectorAll('[data-preset]'));
+  </main>
+</div>
 
-    let selectedFile = null;
-    let loadedImage = null;
-    let exifData = {};
-    let resolvedLocation = null;
-    let deferredInstallPrompt = null;
+<!-- Toast de erro -->
+<div class="toast" id="toastEl"></div>
 
-    function setStatus(text) { statusText.textContent = text; }
-    function getCurrentSourceName() { return selectedFile?.name || loadedImage?.dataset?.sourceName || ''; }
+<script>
+/* ═══════════════════════════════════════════════════════════
+   MÓDULO: Estado da aplicação
+═══════════════════════════════════════════════════════════ */
+const AppState = (() => {
+  let _state = {
+    selectedFile: null,
+    loadedImage: null,
+    exifData: {},
+    resolvedLocation: null,
+    isLoading: false,
+  };
 
-    function getCanvasSpec() {
-      if (outputOrientation.value === 'landscape') {
-        return { width: 1700, height: 1400, stageMinHeight: 620 };
+  return {
+    get: (key) => _state[key],
+    set: (key, value) => { _state[key] = value; },
+    reset: () => {
+      _state = {
+        selectedFile: null,
+        loadedImage: null,
+        exifData: {},
+        resolvedLocation: null,
+        isLoading: false,
+      };
+    },
+  };
+})();
+
+/* ═══════════════════════════════════════════════════════════
+   MÓDULO: UI helpers
+═══════════════════════════════════════════════════════════ */
+const UI = (() => {
+  const statusEl    = document.getElementById('statusText');
+  const spinnerEl   = document.getElementById('spinner');
+  const toastEl     = document.getElementById('toastEl');
+  const hintEl      = document.getElementById('hintBox');
+  const downloadBtn = document.getElementById('downloadBtn');
+  const dimBadge    = document.getElementById('dimensionBadge');
+  let toastTimer    = null;
+
+  return {
+    setStatus(msg, type = '') {
+      statusEl.textContent = msg;
+      statusEl.className = 'status-text' + (type ? ` ${type}` : '');
+    },
+    showSpinner(show) {
+      spinnerEl.classList.toggle('show', show);
+    },
+    showToast(msg, duration = 3500) {
+      clearTimeout(toastTimer);
+      toastEl.textContent = msg;
+      toastEl.classList.add('show');
+      toastTimer = setTimeout(() => toastEl.classList.remove('show'), duration);
+    },
+    setHint(msg) {
+      if (msg) hintEl.textContent = msg;
+    },
+    setDownloadEnabled(enabled) {
+      downloadBtn.disabled = !enabled;
+    },
+    setDimensions(w, h) {
+      if (w && h) {
+        dimBadge.textContent = `${w} × ${h}`;
+        dimBadge.style.display = '';
+      } else {
+        dimBadge.style.display = 'none';
       }
-      return { width: 1400, height: 1700, stageMinHeight: 760 };
-    }
+    },
+  };
+})();
 
-    function syncCanvasSize() {
-      const spec = getCanvasSpec();
-      if (canvas.width !== spec.width) canvas.width = spec.width;
-      if (canvas.height !== spec.height) canvas.height = spec.height;
-      canvas.parentElement.style.minHeight = `${spec.stageMinHeight}px`;
-    }
+/* ═══════════════════════════════════════════════════════════
+   MÓDULO: Formatadores EXIF
+═══════════════════════════════════════════════════════════ */
+const Formatters = (() => {
+  function exposure(value) {
+    if (!value) return null;
+    if (typeof value === 'number') return value >= 1 ? `${value}s` : `1/${Math.round(1 / value)}s`;
+    return String(value);
+  }
 
-    function framePalette() {
-      const tone = frameTone.value;
-      if (tone === 'white') return { frame:'#ffffff', inner:'#f8f8f8', ink:'#111827' };
-      if (tone === 'cream') return { frame:'#fff7ec', inner:'#f6eddc', ink:'#2f2417' };
-      if (tone === 'charcoal') return { frame:'#242428', inner:'#1b1b1f', ink:'#f8fafc' };
-      return { frame:'#fffaf4', inner:'#f4eee5', ink:'#1f2937' };
-    }
+  function date(value) {
+    if (!value) return null;
+    if (value instanceof Date && !isNaN(value))
+      return new Intl.DateTimeFormat('pt-BR', { dateStyle: 'medium', timeStyle: 'short' }).format(value);
+    if (typeof value === 'string')
+      return value.replace(/^(\d{4}):(\d{2}):(\d{2})/, '$3/$2/$1');
+    return String(value);
+  }
 
-    function normalizeProxyUrl(base, targetUrl) {
-      const trimmed = (base || '').trim();
-      if (!trimmed) return targetUrl;
-      return `${trimmed.replace(/\/?$/, '/')}${targetUrl}`;
-    }
-    function isLikelyDirectImageUrl(url) {
-      return /googleusercontent\.com|\.jpg($|\?)|\.jpeg($|\?)|\.png($|\?)|\.webp($|\?)/i.test(url);
-    }
-    async function fetchTextWithOptionalProxy(url) {
-      const finalUrl = normalizeProxyUrl(corsProxyUrl.value, url);
-      const response = await fetch(finalUrl, { headers: { Accept:'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8' } });
-      if (!response.ok) throw new Error(`Falha ao ler a página do link. HTTP ${response.status}.`);
-      return response.text();
-    }
-    function extractImageUrlFromSharedHtml(html) {
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(html, 'text/html');
-      const candidates = [
-        doc.querySelector('meta[property="og:image"]')?.content,
-        doc.querySelector('meta[name="twitter:image"]')?.content,
-        doc.querySelector('link[rel="image_src"]')?.href
-      ].filter(Boolean);
-      if (candidates.length) return candidates[0];
-      return html.match(/https:\/\/lh[0-9]+\.googleusercontent\.com\/[^"'\s<)]+/i)?.[0] || null;
-    }
-    async function loadHtmlSharedImageUrl(url) {
-      const html = await fetchTextWithOptionalProxy(url);
-      const extracted = extractImageUrlFromSharedHtml(html);
-      if (!extracted) throw new Error('Não foi possível extrair o link da imagem da página compartilhada.');
-      return extracted;
-    }
-    async function resolveGooglePhotosImageUrl(url) {
-      const cleanUrl = (url || '').trim();
-      if (!cleanUrl) throw new Error('Cole um link para continuar.');
-      if (linkResolverMode.value === 'direct') return cleanUrl;
-      if (linkResolverMode.value === 'page') return loadHtmlSharedImageUrl(cleanUrl);
-      if (isLikelyDirectImageUrl(cleanUrl)) return cleanUrl;
-      return loadHtmlSharedImageUrl(cleanUrl);
-    }
-    async function loadImageFromUrl(url) {
-      const resolvedUrl = await resolveGooglePhotosImageUrl(url);
-      return new Promise((resolve, reject) => {
-        const img = new Image();
-        img.crossOrigin = 'anonymous';
-        img.referrerPolicy = 'no-referrer';
-        img.onload = () => resolve({ img, resolvedUrl });
-        img.onerror = () => reject(new Error('O navegador não conseguiu carregar a imagem a partir do link informado.'));
-        img.src = resolvedUrl;
-      });
-    }
+  function dateOnly(d) {
+    if (!(d instanceof Date) || isNaN(d)) return null;
+    return new Intl.DateTimeFormat('pt-BR', { dateStyle: 'medium' }).format(d);
+  }
 
-    function formatExposure(value) {
-      if (!value) return null;
-      if (typeof value === 'number') return value >= 1 ? `${value}s` : `1/${Math.round(1 / value)}s`;
-      return String(value);
+  function fNumber(value) {
+    return value ? `f/${Number(value).toFixed(1).replace('.0', '')}` : null;
+  }
+
+  function focalLength(value) {
+    return value ? `${Math.round(Number(value))}mm` : null;
+  }
+
+  function gps(lat, lon) {
+    return (typeof lat === 'number' && typeof lon === 'number')
+      ? `${lat.toFixed(5)}, ${lon.toFixed(5)}`
+      : null;
+  }
+
+  function firstNonEmpty(...values) {
+    return values.find(v => typeof v === 'string' && v.trim()) || null;
+  }
+
+  function whatsappDate(filename) {
+    if (!filename) return null;
+    const patterns = [
+      /(?:IMG|VID|PHOTO|AUD)-?(\d{4})(\d{2})(\d{2})-(?:WA|WhatsApp)/i,
+      /WhatsApp\s+Image\s+(\d{4})-(\d{2})-(\d{2})\s+at/i,
+      /(\d{4})(\d{2})(\d{2})[_-]?WA\d+/i,
+      /(\d{4})-(\d{2})-(\d{2})/i,
+    ];
+    for (const pat of patterns) {
+      const m = filename.match(pat);
+      if (!m) continue;
+      const dt = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+      if (!isNaN(dt)) return dt;
     }
-    function formatDate(value) {
-      if (!value) return null;
-      if (value instanceof Date && !isNaN(value)) return new Intl.DateTimeFormat('pt-BR', { dateStyle:'medium', timeStyle:'short' }).format(value);
-      if (typeof value === 'string') return value.replace(/^([0-9]{4}):([0-9]{2}):([0-9]{2})/, '$3/$2/$1');
-      return String(value);
+    return null;
+  }
+
+  function effectiveDate(exifData, filename, isWhatsapp) {
+    if (isWhatsapp) {
+      const d = whatsappDate(filename);
+      return d ? dateOnly(d) : 'Data desconhecida';
     }
-    function formatDateOnly(date) {
-      if (!(date instanceof Date) || isNaN(date)) return null;
-      return new Intl.DateTimeFormat('pt-BR', { dateStyle:'medium' }).format(date);
-    }
-    function parseWhatsappDateFromFilename(filename) {
-      if (!filename) return null;
-      const patterns = [/(?:IMG|VID|PHOTO|AUD)-?(\d{4})(\d{2})(\d{2})-(?:WA|WhatsApp)/i, /WhatsApp\s+Image\s+(\d{4})-(\d{2})-(\d{2})\s+at/i, /(\d{4})(\d{2})(\d{2})[_-]?WA\d+/i, /(\d{4})-(\d{2})-(\d{2})/i];
-      for (const pattern of patterns) {
-        const match = filename.match(pattern);
-        if (!match) continue;
-        const dt = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
-        if (!isNaN(dt)) return dt;
-      }
-      return null;
-    }
-    function getEffectiveDate(data, filename) {
-      if (isWhatsappImage.checked) {
-        const inferred = parseWhatsappDateFromFilename(filename);
-        return inferred ? formatDateOnly(inferred) : 'Data desconhecida';
-      }
-      return formatDate(data.DateTimeOriginal || data.CreateDate || data.ModifyDate) || 'Sem data';
-    }
-    function formatFNumber(value) { return value ? `f/${Number(value).toFixed(1).replace('.0','')}` : null; }
-    function formatFocalLength(value) { return value ? `${Math.round(Number(value))}mm` : null; }
-    function formatGPS(lat, lon) { return (typeof lat === 'number' && typeof lon === 'number') ? `${lat.toFixed(5)}, ${lon.toFixed(5)}` : null; }
-    function firstNonEmpty(...values) { return values.find(v => typeof v === 'string' && v.trim()) || null; }
-    function formatResolvedLocation(location, mode) {
-      if (isWhatsappImage.checked) return 'Localização desconhecida';
-      if (!location || location.error) return null;
-      if (mode === 'full') return firstNonEmpty(location.formattedAddress, location.displayName, location.label);
-      const city = firstNonEmpty(location.city, location.town, location.village, location.municipality, location.county);
-      const state = firstNonEmpty(location.state, location.region);
-      const country = firstNonEmpty(location.country);
-      const suburb = firstNonEmpty(location.suburb, location.neighbourhood, location.borough);
-      const shortParts = [city, state, country].filter(Boolean);
-      const mediumParts = [suburb, city, state, country].filter(Boolean);
-      if (mode === 'medium' && mediumParts.length) return mediumParts.join(', ');
-      if (shortParts.length) return shortParts.join(', ');
+    return date(exifData.DateTimeOriginal || exifData.CreateDate || exifData.ModifyDate) || 'Sem data';
+  }
+
+  function resolvedLocation(location, mode, isWhatsapp) {
+    if (isWhatsapp) return 'Localização desconhecida';
+    if (!location || location.error) return null;
+    if (mode === 'full')
       return firstNonEmpty(location.formattedAddress, location.displayName, location.label);
-    }
+    const city    = firstNonEmpty(location.city, location.town, location.village, location.municipality, location.county);
+    const state   = firstNonEmpty(location.state, location.region);
+    const country = firstNonEmpty(location.country);
+    const suburb  = firstNonEmpty(location.suburb, location.neighbourhood, location.borough);
+    if (mode === 'medium') return [suburb, city, state, country].filter(Boolean).join(', ') || null;
+    const short = [city, state, country].filter(Boolean);
+    return short.length ? short.join(', ')
+      : firstNonEmpty(location.formattedAddress, location.displayName, location.label);
+  }
 
-    async function reverseGeocodeOSM(lat, lon) {
-      const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&zoom=18&addressdetails=1`;
-      const response = await fetch(url, { headers: { Accept:'application/json' } });
-      if (!response.ok) throw new Error('Falha ao consultar OpenStreetMap/Nominatim.');
-      const data = await response.json();
-      const address = data.address || {};
-      return { provider:'OpenStreetMap', displayName:data.display_name || null, formattedAddress:data.display_name || null, label:data.name || null, city:address.city || null, town:address.town || null, village:address.village || null, municipality:address.municipality || null, county:address.county || null, state:address.state || null, region:address.region || null, country:address.country || null, suburb:address.suburb || null, neighbourhood:address.neighbourhood || null, borough:address.borough || null };
-    }
-    async function reverseGeocodeGoogle(lat, lon, apiKey) {
-      if (!apiKey) throw new Error('Informe a Google Maps API Key para usar o serviço do Google.');
-      const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${encodeURIComponent(lat)},${encodeURIComponent(lon)}&language=pt-BR&key=${encodeURIComponent(apiKey)}`;
-      const response = await fetch(url);
-      if (!response.ok) throw new Error('Falha ao consultar Google Maps Geocoding.');
-      const data = await response.json();
-      if (data.status !== 'OK' || !data.results?.length) throw new Error(`Google Maps retornou status: ${data.status || 'sem resultado'}`);
-      const result = data.results[0];
-      const getComponent = (...types) => result.address_components?.find(item => types.every(type => item.types.includes(type)))?.long_name || null;
-      return { provider:'Google Maps', displayName:result.formatted_address || null, formattedAddress:result.formatted_address || null, label:getComponent('point_of_interest') || getComponent('establishment'), city:getComponent('administrative_area_level_2') || getComponent('locality'), town:getComponent('sublocality_level_1'), village:null, municipality:getComponent('locality'), county:getComponent('administrative_area_level_2'), state:getComponent('administrative_area_level_1'), region:getComponent('administrative_area_level_1'), country:getComponent('country'), suburb:getComponent('sublocality') || getComponent('sublocality_level_1'), neighbourhood:getComponent('neighborhood'), borough:getComponent('administrative_area_level_3') };
-    }
-    async function resolveLocationFromGPS(lat, lon) {
-      if (isWhatsappImage.checked) return { provider:'WhatsApp override', displayName:'Localização desconhecida' };
-      if (typeof lat !== 'number' || typeof lon !== 'number') return null;
-      if (geoProvider.value === 'none') return null;
-      if (geoProvider.value === 'google') return reverseGeocodeGoogle(lat, lon, googleApiKey.value.trim());
-      return reverseGeocodeOSM(lat, lon);
-    }
+  return { exposure, date, dateOnly, fNumber, focalLength, gps, firstNonEmpty, whatsappDate, effectiveDate, resolvedLocation };
+})();
 
-    function getCheckedTags() { return tagInputs.filter(input => input.checked).map(input => input.value); }
-    function buildLinesFromTags(tags, data) {
-      const lines = [];
-      for (const tag of tags) {
-        switch (tag) {
-          case 'DateTimeOriginal': { const v = getEffectiveDate(data, getCurrentSourceName()); if (v) lines.push(`Data: ${v}`); break; }
-          case 'Make': if (data.Make) lines.push(`Marca: ${data.Make}`); break;
-          case 'Model': if (data.Model) lines.push(`Câmera: ${data.Model}`); break;
-          case 'LensModel': if (data.LensModel) lines.push(`Lente: ${data.LensModel}`); break;
-          case 'ISO': if (data.ISO) lines.push(`ISO: ${data.ISO}`); break;
-          case 'FNumber': { const v = formatFNumber(data.FNumber); if (v) lines.push(`Abertura: ${v}`); break; }
-          case 'ExposureTime': { const v = formatExposure(data.ExposureTime); if (v) lines.push(`Exposição: ${v}`); break; }
-          case 'FocalLength': { const v = formatFocalLength(data.FocalLength); if (v) lines.push(`Focal: ${v}`); break; }
-          case 'GPS': if (!isWhatsappImage.checked) { const v = formatGPS(data.latitude, data.longitude); if (v) lines.push(`GPS: ${v}`); } break;
-          case 'ResolvedLocation': { const v = formatResolvedLocation(resolvedLocation, locationFormat.value); if (v) lines.push(`Local: ${v}`); break; }
-        }
-      }
-      return lines;
-    }
-    function getTypography() {
-      if (fontSelect.value === 'hand') return { title:'700 68px "Patrick Hand", cursive', body:'36px "Patrick Hand", cursive' };
-      if (fontSelect.value === 'type') return { title:'700 54px "Special Elite", serif', body:'28px "Special Elite", serif' };
-      if (fontSelect.value === 'clean') return { title:'800 56px Inter, sans-serif', body:'500 27px Inter, sans-serif' };
-      return { title:'700 58px "Special Elite", serif', body:'34px "Patrick Hand", cursive' };
-    }
-    function drawRoundedRect(x, y, w, h, r, fill = true) {
-      ctx.beginPath();
-      ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y); ctx.quadraticCurveTo(x + w, y, x + w, y + r); ctx.lineTo(x + w, y + h - r); ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h); ctx.lineTo(x + r, y + h); ctx.quadraticCurveTo(x, y + h, x, y + h - r); ctx.lineTo(x, y + r); ctx.quadraticCurveTo(x, y, x + r, y); ctx.closePath();
-      if (fill) ctx.fill();
-    }
-    function wrapText(text, x, y, maxWidth, lineHeight) {
-      const words = text.split(/\s+/); let line = ''; const out = [];
-      for (const word of words) { const test = line ? `${line} ${word}` : word; if (ctx.measureText(test).width > maxWidth) { if (line) out.push(line); line = word; } else { line = test; } }
-      if (line) out.push(line);
-      out.forEach((item, index) => ctx.fillText(item, x, y + index * lineHeight));
-      return out.length;
-    }
-    function renderPlaceholder() {
-      syncCanvasSize();
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      const bg = ctx.createLinearGradient(0, 0, 0, canvas.height);
-      bg.addColorStop(0, '#e9dfd0'); bg.addColorStop(1, '#d8c8b2'); ctx.fillStyle = bg; ctx.fillRect(0, 0, canvas.width, canvas.height);
-      const isLandscape = outputOrientation.value === 'landscape';
-      ctx.fillStyle = 'rgba(255,255,255,.45)';
-      drawRoundedRect(isLandscape ? 160 : 240, isLandscape ? 180 : 190, isLandscape ? 1380 : 920, isLandscape ? 980 : 1220, 24);
-      ctx.fillStyle = '#7c6f60'; ctx.font = '700 56px Inter, sans-serif';
-      ctx.fillText('Solte uma memória aqui', isLandscape ? 450 : 360, isLandscape ? 640 : 720);
-      ctx.font = '30px Inter, sans-serif'; ctx.fillText('Upload, drag & drop ou link do Google Photos.', isLandscape ? 365 : 310, isLandscape ? 700 : 780);
-    }
-    function applySepiaEffect() {
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height); const d = imageData.data;
-      for (let i = 0; i < d.length; i += 4) { const r = d[i], g = d[i + 1], b = d[i + 2]; d[i] = Math.min(255, 0.393*r + 0.769*g + 0.189*b); d[i+1] = Math.min(255, 0.349*r + 0.686*g + 0.168*b); d[i+2] = Math.min(255, 0.272*r + 0.534*g + 0.131*b); }
-      ctx.putImageData(imageData, 0, 0);
-    }
-    function applyNoiseEffect(amount = 2800, alpha = 0.05) {
-      for (let i = 0; i < amount; i += 1) { ctx.fillStyle = `rgba(0,0,0,${Math.random()*alpha})`; ctx.fillRect(Math.random()*canvas.width, Math.random()*canvas.height, Math.random() > 0.92 ? 2 : 1, Math.random() > 0.92 ? 2 : 1); }
-    }
-    function drawDustEffect() {
-      for (let i = 0; i < 45; i += 1) { ctx.fillStyle = `rgba(255,255,255,${0.035 + Math.random()*0.06})`; ctx.beginPath(); ctx.arc(Math.random()*canvas.width, Math.random()*canvas.height, Math.random()*2.8 + 0.8, 0, Math.PI*2); ctx.fill(); }
-    }
-    function drawTape(x, y, w, h, rotationDeg) {
-      ctx.save(); ctx.translate(x + w/2, y + h/2); ctx.rotate(rotationDeg * Math.PI / 180); ctx.fillStyle = 'rgba(248, 233, 185, .66)'; ctx.fillRect(-w/2, -h/2, w, h); ctx.strokeStyle = 'rgba(199, 179, 120, .28)'; ctx.strokeRect(-w/2, -h/2, w, h); ctx.restore();
-    }
-    function drawStamp() {
-      if (!effectStamp.checked) return;
-      ctx.save();
-      const x = outputOrientation.value === 'landscape' ? 1410 : 1110;
-      const y = outputOrientation.value === 'landscape' ? 1080 : 1320;
-      ctx.translate(x, y); ctx.rotate(-0.16); ctx.strokeStyle = 'rgba(176, 25, 25, .72)'; ctx.lineWidth = 7; ctx.strokeRect(-124, -44, 248, 88); ctx.font = '700 42px "Special Elite", serif'; ctx.fillStyle = 'rgba(176, 25, 25, .65)'; ctx.textAlign = 'center'; ctx.fillText('VINTAGE', 0, 14); ctx.restore();
-    }
-    function drawBackgroundTexture() {
-      const bg = ctx.createLinearGradient(0, 0, 0, canvas.height); bg.addColorStop(0, '#efe5d6'); bg.addColorStop(1, '#d7c7b2'); ctx.fillStyle = bg; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.fillStyle = 'rgba(255,255,255,.16)';
-      for (let i = 0; i < 18; i += 1) { ctx.beginPath(); ctx.arc(Math.random()*canvas.width, Math.random()*canvas.height, Math.random()*140 + 40, 0, Math.PI*2); ctx.fill(); }
-    }
+/* ═══════════════════════════════════════════════════════════
+   MÓDULO: Geocoding
+═══════════════════════════════════════════════════════════ */
+const Geocoding = (() => {
+  const GOOGLE_KEY = 'AIzaSyAe-B5ewZdZQlhFqzzKfyo7go3cSZgfBzU';
 
-    function renderPortrait(palette, fonts, lines, note) {
-      const angle = Number(rotation.value || 0) * Math.PI / 180;
-      const frameX = 230, frameY = 120, frameW = 940, frameH = 1320, photoMargin = 58, bottomSpace = 310;
-      const photoX = frameX + photoMargin, photoY = frameY + photoMargin, photoW = frameW - photoMargin * 2, photoH = frameH - photoMargin - bottomSpace;
-      ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.19)'; ctx.shadowBlur = 48; ctx.shadowOffsetY = 20; ctx.fillStyle = palette.frame; drawRoundedRect(frameX, frameY, frameW, frameH, 22); ctx.restore();
-      if (showTape.checked) { drawTape(frameX + 80, frameY - 28, 180, 48, -10); drawTape(frameX + frameW - 250, frameY - 22, 170, 46, 8); }
-      ctx.save(); ctx.translate(photoX + photoW/2, photoY + photoH/2); ctx.rotate(angle); ctx.fillStyle = palette.inner; ctx.fillRect(-photoW/2 - 10, -photoH/2 - 10, photoW + 20, photoH + 20);
-      const imgRatio = loadedImage.width / loadedImage.height; let drawW = photoW, drawH = photoH;
-      if (photoW / photoH > imgRatio) { drawW = photoW; drawH = drawW / imgRatio; } else { drawH = photoH; drawW = drawH * imgRatio; }
-      ctx.drawImage(loadedImage, -drawW/2, -drawH/2, drawW, drawH); ctx.restore();
-      ctx.fillStyle = palette.ink; ctx.textAlign = 'left'; let textY = photoY + photoH + 92; ctx.font = fonts.title; ctx.fillText((titleText.value || 'Minha Polaroid').trim(), frameX + 54, textY); textY += fontSelect.value === 'type' ? 66 : 62;
-      ctx.font = fonts.body; ctx.fillStyle = palette.ink === '#f8fafc' ? '#e5e7eb' : '#4b5563';
-      if (note) { const used = wrapText(note, frameX + 54, textY, frameW - 108, fontSelect.value === 'type' ? 36 : 42); textY += used * (fontSelect.value === 'type' ? 36 : 42) + 18; }
-      ctx.font = fonts.body; lines.forEach(line => { ctx.fillText(line, frameX + 54, textY); textY += fontSelect.value === 'type' ? 34 : 38; });
-      if (!note && !lines.length) ctx.fillText('Selecione tags ou adicione um texto manual.', frameX + 54, textY);
-    }
+  async function fromOSM(lat, lon) {
+    const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1`;
+    const resp = await fetch(url, { headers: { Accept: 'application/json' } });
+    if (!resp.ok) throw new Error(`OSM HTTP ${resp.status}`);
+    const data = await resp.json();
+    const a = data.address || {};
+    return {
+      provider: 'OpenStreetMap',
+      displayName: data.display_name || null,
+      formattedAddress: data.display_name || null,
+      label: data.name || null,
+      city: a.city || null,
+      town: a.town || null,
+      village: a.village || null,
+      municipality: a.municipality || null,
+      county: a.county || null,
+      state: a.state || null,
+      region: a.region || null,
+      country: a.country || null,
+      suburb: a.suburb || null,
+      neighbourhood: a.neighbourhood || null,
+      borough: a.borough || null,
+    };
+  }
 
-    function renderLandscape(palette, fonts, lines, note) {
-      const angle = Number(rotation.value || 0) * Math.PI / 180;
-      const frameX = 120, frameY = 180, frameW = 1460, frameH = 960, photoMargin = 54, rightPanel = 430;
-      const photoX = frameX + photoMargin, photoY = frameY + photoMargin, photoW = frameW - photoMargin * 2 - rightPanel, photoH = frameH - photoMargin * 2;
-      const textX = photoX + photoW + 54, textW = frameW - (textX - frameX) - 44;
-      ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.19)'; ctx.shadowBlur = 48; ctx.shadowOffsetY = 20; ctx.fillStyle = palette.frame; drawRoundedRect(frameX, frameY, frameW, frameH, 22); ctx.restore();
-      if (showTape.checked) { drawTape(frameX + 120, frameY - 26, 190, 48, -9); drawTape(frameX + 980, frameY - 18, 165, 42, 7); }
-      ctx.save(); ctx.translate(photoX + photoW/2, photoY + photoH/2); ctx.rotate(angle); ctx.fillStyle = palette.inner; ctx.fillRect(-photoW/2 - 10, -photoH/2 - 10, photoW + 20, photoH + 20);
-      const imgRatio = loadedImage.width / loadedImage.height; let drawW = photoW, drawH = photoH;
-      if (photoW / photoH > imgRatio) { drawW = photoW; drawH = drawW / imgRatio; } else { drawH = photoH; drawW = drawH * imgRatio; }
-      ctx.drawImage(loadedImage, -drawW/2, -drawH/2, drawW, drawH); ctx.restore();
-      ctx.fillStyle = palette.ink; ctx.textAlign = 'left'; let textY = frameY + 106; ctx.font = fonts.title; ctx.fillText((titleText.value || 'Minha Polaroid').trim(), textX, textY); textY += fontSelect.value === 'type' ? 64 : 62;
-      ctx.font = fonts.body; ctx.fillStyle = palette.ink === '#f8fafc' ? '#e5e7eb' : '#4b5563';
-      if (note) { const used = wrapText(note, textX, textY, textW, fontSelect.value === 'type' ? 36 : 42); textY += used * (fontSelect.value === 'type' ? 36 : 42) + 18; }
-      ctx.font = fonts.body; lines.forEach(line => { ctx.fillText(line, textX, textY); textY += fontSelect.value === 'type' ? 34 : 38; });
-      if (!note && !lines.length) ctx.fillText('Selecione tags ou adicione um texto manual.', textX, textY);
-    }
+  async function fromGoogle(lat, lon) {
+    const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lon}&language=pt-BR&key=${GOOGLE_KEY}`;
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error(`Google Maps HTTP ${resp.status}`);
+    const data = await resp.json();
+    if (data.status !== 'OK' || !data.results?.length)
+      throw new Error(`Google Maps: ${data.status || 'sem resultado'}`);
+    const result = data.results[0];
+    const getComp = (...types) =>
+      result.address_components?.find(i => types.every(t => i.types.includes(t)))?.long_name || null;
+    return {
+      provider: 'Google Maps',
+      displayName: result.formatted_address || null,
+      formattedAddress: result.formatted_address || null,
+      label: getComp('point_of_interest') || getComp('establishment'),
+      city: getComp('administrative_area_level_2') || getComp('locality'),
+      town: getComp('sublocality_level_1'),
+      village: null,
+      municipality: getComp('locality'),
+      county: getComp('administrative_area_level_2'),
+      state: getComp('administrative_area_level_1'),
+      region: getComp('administrative_area_level_1'),
+      country: getComp('country'),
+      suburb: getComp('sublocality') || getComp('sublocality_level_1'),
+      neighbourhood: getComp('neighborhood'),
+      borough: getComp('administrative_area_level_3'),
+    };
+  }
 
-    function renderPolaroid() {
-      if (!loadedImage) return renderPlaceholder();
-      syncCanvasSize();
-      const palette = framePalette(); const fonts = getTypography(); const lines = buildLinesFromTags(getCheckedTags(), exifData); const note = customText.value.trim();
-      ctx.clearRect(0, 0, canvas.width, canvas.height); drawBackgroundTexture();
-      if (outputOrientation.value === 'landscape') renderLandscape(palette, fonts, lines, note); else renderPortrait(palette, fonts, lines, note);
-      if (effectSepia.checked) applySepiaEffect();
-      if (effectGrain.checked) applyNoiseEffect(3500, .065);
-      if (effectDust.checked) drawDustEffect();
-      drawStamp();
-    }
+  async function resolve(lat, lon, provider, isWhatsapp) {
+    if (isWhatsapp) return { provider: 'WhatsApp override', displayName: 'Localização desconhecida' };
+    if (typeof lat !== 'number' || typeof lon !== 'number') return null;
+    if (provider === 'none') return null;
 
-    function updateInspector(extra = {}) {
-      const items = [
-        ['Modo', extra.sourceMode || '—'],
-        ['Orientação', outputOrientation.value === 'landscape' ? 'Paisagem' : 'Retrato'],
-        ['Arquivo / origem', getCurrentSourceName() || '—'],
-        ['Data', getEffectiveDate(exifData, getCurrentSourceName())],
-        ['Local', formatResolvedLocation(resolvedLocation, locationFormat.value) || '—'],
-        ['Câmera', exifData.Model || '—'],
-        ['ISO', exifData.ISO || '—'],
-        ['Abertura', formatFNumber(exifData.FNumber) || '—'],
-        ['Exposição', formatExposure(exifData.ExposureTime) || '—'],
-        ['GPS', isWhatsappImage.checked ? 'oculto (WhatsApp)' : (formatGPS(exifData.latitude, exifData.longitude) || '—')]
-      ];
-      metadataStats.innerHTML = items.map(([label, value]) => `<div class="stat"><b>${label}</b><span>${value}</span></div>`).join('');
-      sourceBadge.textContent = extra.sourceMode || 'upload';
-      hintBox.textContent = extra.note || (isWhatsappImage.checked ? 'Modo WhatsApp ativo: localização desconhecida e data inferida do nome do arquivo.' : 'Você pode alternar entre retrato e paisagem sem perder os efeitos e metadados.');
-    }
-
-    async function hydrateStateAndRender(extra = {}) {
-      try { resolvedLocation = await resolveLocationFromGPS(exifData.latitude, exifData.longitude); }
-      catch (err) { resolvedLocation = { error: err.message }; }
-      renderPolaroid();
-      updateInspector(extra);
-      downloadBtn.disabled = !loadedImage;
-    }
-
-    async function loadImageAndExif(file) {
-      selectedFile = file; setStatus('Lendo EXIF e preparando preview…'); exifData = {}; resolvedLocation = null;
-      const blobUrl = URL.createObjectURL(file);
-      try { exifData = (await exifr.parse(file, { tiff:true, exif:true, gps:true, translateValues:false })) || {}; } catch { exifData = {}; }
+    // Tenta OSM primeiro; se falhar, cai para Google
+    try {
+      return await fromOSM(lat, lon);
+    } catch (osmErr) {
+      console.warn('OSM falhou, tentando Google Maps…', osmErr.message);
       try {
-        loadedImage = await new Promise((resolve, reject) => { const img = new Image(); img.onload = () => resolve(img); img.onerror = reject; img.src = blobUrl; });
-        loadedImage.dataset.sourceName = file.name || '';
-      } finally { URL.revokeObjectURL(blobUrl); }
-      await hydrateStateAndRender({ sourceMode: 'upload local' });
-      setStatus('Preview atualizado.');
-    }
-
-    async function loadFromUrl() {
-      const inputUrl = googlePhotosUrl.value.trim(); if (!inputUrl) return setStatus('Cole um link antes de continuar.');
-      selectedFile = null; exifData = {}; resolvedLocation = null; setStatus('Abrindo imagem a partir do link…');
-      const { img, resolvedUrl } = await loadImageFromUrl(inputUrl); loadedImage = img; loadedImage.dataset.sourceName = resolvedUrl.split('/').pop()?.split('?')[0] || 'google-photos-image.jpg';
-      try { const exifUrl = normalizeProxyUrl(corsProxyUrl.value, resolvedUrl); exifData = (await exifr.parse(exifUrl, { tiff:true, exif:true, gps:true, translateValues:false, fetch })) || {}; } catch { exifData = {}; }
-      await hydrateStateAndRender({ sourceMode:'google photos link', note: Object.keys(exifData).length ? 'Imagem carregada por link com metadados parciais/completos.' : 'Imagem aberta por link. Alguns serviços podem bloquear o EXIF por CORS.' });
-      setStatus('Imagem via link carregada.');
-    }
-
-    function applyPreset(name) {
-      if (name === 'classic') { fontSelect.value = 'default'; frameTone.value = 'warm'; showTape.checked = true; effectSepia.checked = false; effectGrain.checked = false; effectStamp.checked = false; effectDust.checked = false; rotation.value = -4; }
-      if (name === 'scrapbook') { fontSelect.value = 'hand'; frameTone.value = 'cream'; showTape.checked = true; effectSepia.checked = false; effectGrain.checked = true; effectStamp.checked = false; effectDust.checked = true; rotation.value = -7; }
-      if (name === 'cinema') { fontSelect.value = 'type'; frameTone.value = 'charcoal'; showTape.checked = false; effectSepia.checked = true; effectGrain.checked = true; effectStamp.checked = true; effectDust.checked = true; rotation.value = -2; }
-      if (name === 'summer') { fontSelect.value = 'clean'; frameTone.value = 'white'; showTape.checked = true; effectSepia.checked = true; effectGrain.checked = false; effectStamp.checked = false; effectDust.checked = false; rotation.value = 3; }
-      if (loadedImage) renderPolaroid();
-    }
-
-    function resetApp() {
-      selectedFile = null; loadedImage = null; exifData = {}; resolvedLocation = null; imageInput.value = ''; googlePhotosUrl.value = ''; corsProxyUrl.value = ''; titleText.value = 'Minha Polaroid'; customText.value = ''; fontSelect.value = 'default'; rotation.value = -4; frameTone.value = 'warm'; outputOrientation.value = 'portrait'; locationFormat.value = 'short'; geoProvider.value = 'osm'; googleApiKey.value = ''; isWhatsappImage.checked = false; showTape.checked = true; effectSepia.checked = false; effectGrain.checked = false; effectStamp.checked = false; effectDust.checked = false;
-      tagInputs.forEach(input => { input.checked = ['DateTimeOriginal','ResolvedLocation','Model','ISO','FNumber','ExposureTime'].includes(input.value); });
-      updateInspector({ sourceMode:'sem fonte', note:'Tudo limpo. Escolha uma nova imagem para continuar.' });
-      renderPlaceholder(); downloadBtn.disabled = true; setStatus('Estado inicial restaurado.');
-    }
-
-    async function handleDroppedFiles(files) {
-      const file = files?.[0];
-      if (!file || !file.type.startsWith('image/')) {
-        setStatus('Solte um arquivo de imagem válido.');
-        return;
+        return await fromGoogle(lat, lon);
+      } catch (googleErr) {
+        console.warn('Google Maps também falhou:', googleErr.message);
+        return { error: `OSM: ${osmErr.message} | Google: ${googleErr.message}` };
       }
-      googlePhotosUrl.value = '';
-      await loadImageAndExif(file);
+    }
+  }
+
+  return { resolve };
+})();
+
+/* ═══════════════════════════════════════════════════════════
+   MÓDULO: Renderer do Canvas
+   Layout Polaroid real:
+   ┌─────────────────────────┐
+   │   [moldura]             │
+   │  ┌───────────────────┐  │  ← margem lateral
+   │  │                   │  │
+   │  │    FOTO           │  │
+   │  │                   │  │
+   │  └───────────────────┘  │
+   │                         │  ← espaço branco inferior
+   │   Título                │
+   │   metadados EXIF        │
+   │                         │
+   └─────────────────────────┘
+═══════════════════════════════════════════════════════════ */
+const Renderer = (() => {
+  const canvas = document.getElementById('canvas');
+  const ctx    = canvas.getContext('2d');
+
+  /* Paletas de moldura */
+  function palette(tone) {
+    const p = {
+      warm:     { frame: '#fffaf4', inner: '#f5ede0', shadow: 'rgba(120,80,30,.18)', ink: '#1a120a', inkMuted: '#7a6040' },
+      white:    { frame: '#ffffff', inner: '#f8f8f8', shadow: 'rgba(0,0,0,.14)',     ink: '#111827', inkMuted: '#6b7280' },
+      cream:    { frame: '#fff8ee', inner: '#f4ead8', shadow: 'rgba(140,100,40,.16)',ink: '#2f2417', inkMuted: '#8a6a40' },
+      charcoal: { frame: '#252528', inner: '#1c1c20', shadow: 'rgba(0,0,0,.5)',      ink: '#f0f0f0', inkMuted: '#9090a0' },
+    };
+    return p[tone] || p.warm;
+  }
+
+  /* Tipografias */
+  function typography(style) {
+    const t = {
+      default: { title: '700 52px "Special Elite", serif',    body: '28px "Caveat", cursive',        lineH: 38 },
+      hand:    { title: '600 64px "Caveat", cursive',          body: '30px "Caveat", cursive',        lineH: 40 },
+      type:    { title: '700 44px "Special Elite", serif',     body: '24px "Special Elite", serif',   lineH: 34 },
+      clean:   { title: '700 48px "Courier Prime", monospace', body: '22px "Courier Prime", monospace', lineH: 32 },
+    };
+    return t[style] || t.default;
+  }
+
+  /* Desenhar rect arredondado */
+  function roundedRect(x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.arcTo(x + w, y, x + w, y + r, r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+    ctx.lineTo(x + r, y + h);
+    ctx.arcTo(x, y + h, x, y + h - r, r);
+    ctx.lineTo(x, y + r);
+    ctx.arcTo(x, y, x + r, y, r);
+    ctx.closePath();
+  }
+
+  /* Wrap de texto */
+  function wrapText(text, x, y, maxW, lineH) {
+    const words = text.split(/\s+/);
+    let line = '';
+    const lines = [];
+    for (const word of words) {
+      const test = line ? `${line} ${word}` : word;
+      if (ctx.measureText(test).width > maxW && line) {
+        lines.push(line);
+        line = word;
+      } else {
+        line = test;
+      }
+    }
+    if (line) lines.push(line);
+    lines.forEach((l, i) => ctx.fillText(l, x, y + i * lineH));
+    return lines.length;
+  }
+
+  /* Fita adesiva decorativa */
+  function drawTape(x, y, w, h, angle) {
+    ctx.save();
+    ctx.translate(x + w / 2, y + h / 2);
+    ctx.rotate(angle * Math.PI / 180);
+    ctx.fillStyle = 'rgba(248,233,175,.58)';
+    ctx.fillRect(-w / 2, -h / 2, w, h);
+    // linhas paralelas da fita
+    ctx.strokeStyle = 'rgba(200,175,90,.22)';
+    ctx.lineWidth = 1;
+    for (let i = -w; i < w; i += 8) {
+      ctx.beginPath();
+      ctx.moveTo(i, -h / 2);
+      ctx.lineTo(i, h / 2);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  /* Carimbo VINTAGE */
+  function drawStamp(x, y) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(-0.14);
+    ctx.strokeStyle = 'rgba(185,40,40,.65)';
+    ctx.lineWidth = 6;
+    ctx.strokeRect(-110, -38, 220, 76);
+    ctx.font = '700 38px "Special Elite", serif';
+    ctx.fillStyle = 'rgba(185,40,40,.6)';
+    ctx.textAlign = 'center';
+    ctx.fillText('VINTAGE', 0, 12);
+    ctx.restore();
+  }
+
+  /* Efeito sépia */
+  function applySepia() {
+    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const d = imgData.data;
+    for (let i = 0; i < d.length; i += 4) {
+      const r = d[i], g = d[i+1], b = d[i+2];
+      d[i]   = Math.min(255, 0.393*r + 0.769*g + 0.189*b);
+      d[i+1] = Math.min(255, 0.349*r + 0.686*g + 0.168*b);
+      d[i+2] = Math.min(255, 0.272*r + 0.534*g + 0.131*b);
+    }
+    ctx.putImageData(imgData, 0, 0);
+  }
+
+  /* Grão de filme */
+  function applyGrain(amount = 3200, alpha = 0.055) {
+    for (let i = 0; i < amount; i++) {
+      ctx.fillStyle = `rgba(0,0,0,${Math.random() * alpha})`;
+      const size = Math.random() > 0.9 ? 2 : 1;
+      ctx.fillRect(Math.random() * canvas.width, Math.random() * canvas.height, size, size);
+    }
+  }
+
+  /* Poeira */
+  function applyDust() {
+    for (let i = 0; i < 50; i++) {
+      ctx.fillStyle = `rgba(255,255,255,${0.03 + Math.random() * 0.055})`;
+      ctx.beginPath();
+      ctx.arc(
+        Math.random() * canvas.width,
+        Math.random() * canvas.height,
+        Math.random() * 2.4 + 0.6,
+        0, Math.PI * 2
+      );
+      ctx.fill();
+    }
+  }
+
+  /* Fundo com textura de papel */
+  function drawPaperBackground(pal) {
+    // Gradiente base
+    const grad = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+    grad.addColorStop(0, pal.frame);
+    grad.addColorStop(1,
+      pal.frame === '#252528'
+        ? '#1a1a1e'
+        : pal.frame === '#ffffff'
+          ? '#f0f0f0'
+          : '#f0e6d4'
+    );
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Manchas sutis de papel
+    ctx.fillStyle = 'rgba(0,0,0,.012)';
+    for (let i = 0; i < 12; i++) {
+      ctx.beginPath();
+      ctx.arc(
+        Math.random() * canvas.width,
+        Math.random() * canvas.height,
+        Math.random() * 180 + 60,
+        0, Math.PI * 2
+      );
+      ctx.fill();
+    }
+  }
+
+  /* ──────────────────────────────────────────────────────────
+     Render RETRATO  — layout Polaroid real
+     Proporção aprox: 3:4 (ex: 1200×1500)
+     Margem: ~7% de cada lado
+     Zona da foto: ocupa ~70% da altura total
+     Zona do texto: ~23% da altura total (acima da base)
+  ────────────────────────────────────────────────────────── */
+  function renderPortrait(pal, fonts, lines, note, opts) {
+    const W = canvas.width;
+    const H = canvas.height;
+    const { showTape, effectStamp, rotation } = opts;
+
+    // Dimensões do frame (ocupa quase tudo)
+    const fX = Math.round(W * 0.06);
+    const fY = Math.round(H * 0.05);
+    const fW = Math.round(W * 0.88);
+    const fH = Math.round(H * 0.90);
+    const fR = 6; // Polaroid tem cantos quase retos
+
+    // Sombra do frame
+    ctx.save();
+    ctx.shadowColor = pal.shadow;
+    ctx.shadowBlur = 48;
+    ctx.shadowOffsetX = 6;
+    ctx.shadowOffsetY = 14;
+    ctx.fillStyle = pal.frame;
+    roundedRect(fX, fY, fW, fH, fR);
+    ctx.fill();
+    ctx.restore();
+
+    // Frame principal
+    ctx.fillStyle = pal.frame;
+    roundedRect(fX, fY, fW, fH, fR);
+    ctx.fill();
+
+    // ── Zona da foto ──
+    // Margens laterais e superior: 5% do frame
+    // Altura da foto: ~68% da altura total do frame
+    const photoMarginH = Math.round(fW * 0.045); // margens horizontais
+    const photoMarginTop = Math.round(fW * 0.045); // margem topo
+    const pX = fX + photoMarginH;
+    const pY = fY + photoMarginTop;
+    const pW = fW - photoMarginH * 2;
+    const pH = Math.round(fH * 0.68);
+
+    // Fundo da área da foto (inner)
+    ctx.fillStyle = pal.inner;
+    ctx.fillRect(pX, pY, pW, pH);
+
+    // Desenhar a imagem com clip e inclinação
+    const img = AppState.get('loadedImage');
+    if (img) {
+      ctx.save();
+      // Clip para a área da foto
+      ctx.beginPath();
+      ctx.rect(pX, pY, pW, pH);
+      ctx.clip();
+
+      // Aplicar rotação em torno do centro da foto
+      ctx.translate(pX + pW / 2, pY + pH / 2);
+      ctx.rotate(rotation * Math.PI / 180);
+
+      // Cover: preenche o espaço sem distorcer
+      const iR = img.naturalWidth / img.naturalHeight;
+      const fRatio = pW / pH;
+      let dW, dH;
+      if (iR > fRatio) {
+        dH = pH * 1.05;
+        dW = dH * iR;
+      } else {
+        dW = pW * 1.05;
+        dH = dW / iR;
+      }
+      ctx.drawImage(img, -dW / 2, -dH / 2, dW, dH);
+      ctx.restore();
     }
 
-    imageInput.addEventListener('change', async (event) => { const file = event.target.files?.[0]; if (!file) return; googlePhotosUrl.value = ''; try { await loadImageAndExif(file); } catch (err) { setStatus(`Erro ao carregar arquivo: ${err.message}`); } });
-    loadFromUrlBtn.addEventListener('click', async () => { try { await loadFromUrl(); } catch (err) { renderPlaceholder(); updateInspector({ sourceMode:'erro', note: err.message }); setStatus(`Erro: ${err.message}`); } });
-    generateBtn.addEventListener('click', () => { if (!loadedImage) return; renderPolaroid(); updateInspector({ sourceMode: googlePhotosUrl.value.trim() ? 'google photos link' : 'upload local' }); setStatus('Renderização concluída.'); });
-    downloadBtn.addEventListener('click', () => { if (!loadedImage) return; const a = document.createElement('a'); const safe = (titleText.value || 'polaroid').trim().replace(/[^a-z0-9-_]+/gi, '-').toLowerCase(); a.download = `${safe || 'polaroid'}-${outputOrientation.value}.png`; a.href = canvas.toDataURL('image/png'); a.click(); setStatus('PNG gerado para download.'); });
-    installBtn.addEventListener('click', async () => {
-      if (!deferredInstallPrompt) {
-        setStatus('A instalação não está disponível neste navegador ainda.');
-        return;
+    // Borda sutil em volta da foto
+    ctx.strokeStyle = 'rgba(0,0,0,.08)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(pX, pY, pW, pH);
+
+    // ── Fita decorativa (sobre a foto) ──
+    if (showTape) {
+      drawTape(pX + Math.round(pW * 0.08), pY - 26, 160, 48, -9);
+      drawTape(pX + Math.round(pW * 0.62), pY - 20, 145, 44, 8);
+    }
+
+    // ── Zona de texto — espaço branco inferior ──
+    // Começa logo abaixo da foto, vai até o fim do frame
+    const tZoneY = pY + pH;
+    const tZoneH = fH - photoMarginTop - pH;
+    const tX = fX + Math.round(fW * 0.06);
+    const tMaxW = fW - Math.round(fW * 0.12);
+
+    // Linha divisória muito sutil (opcional — dá aspecto de Polaroid real)
+    ctx.strokeStyle = 'rgba(0,0,0,.04)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(pX, tZoneY);
+    ctx.lineTo(pX + pW, tZoneY);
+    ctx.stroke();
+
+    // Texto: título
+    ctx.fillStyle = pal.ink;
+    ctx.textAlign = 'left';
+
+    // Posicionar título verticalmente centrado no espaço disponível
+    // O espaço tem ~tZoneH px; usamos ~30% dele para o título, o resto para tags
+    const titleY = tZoneY + Math.round(tZoneH * 0.22);
+    ctx.font = fonts.title;
+    ctx.fillText((document.getElementById('titleText').value || 'Minha Polaroid').trim(), tX, titleY);
+
+    // Subtítulo / nota
+    let textCursor = titleY + Math.round(tZoneH * 0.18);
+    ctx.fillStyle = pal.inkMuted;
+    ctx.font = fonts.body;
+
+    if (note) {
+      const used = wrapText(note, tX, textCursor, tMaxW, fonts.lineH);
+      textCursor += used * fonts.lineH + 10;
+    }
+
+    // Tags EXIF
+    lines.forEach(line => {
+      ctx.fillText(line, tX, textCursor);
+      textCursor += fonts.lineH - 4;
+    });
+
+    if (!note && !lines.length) {
+      ctx.fillText('Selecione tags ou adicione um texto.', tX, textCursor);
+    }
+
+    // Carimbo
+    if (effectStamp) {
+      drawStamp(fX + fW - Math.round(fW * 0.18), fY + fH - Math.round(fH * 0.08));
+    }
+  }
+
+  /* ──────────────────────────────────────────────────────────
+     Render PAISAGEM — moldura horizontal
+     Layout: foto à esquerda (~65%), texto à direita (~35%)
+     Mas mantendo a lógica Polaroid: fundo branco abaixo da foto
+     Na versão paisagem, o "abaixo" vira um painel lateral direito
+  ────────────────────────────────────────────────────────── */
+  function renderLandscape(pal, fonts, lines, note, opts) {
+    const W = canvas.width;
+    const H = canvas.height;
+    const { showTape, effectStamp, rotation } = opts;
+
+    const fX = Math.round(W * 0.05);
+    const fY = Math.round(H * 0.07);
+    const fW = Math.round(W * 0.90);
+    const fH = Math.round(H * 0.86);
+    const fR = 6;
+
+    // Sombra
+    ctx.save();
+    ctx.shadowColor = pal.shadow;
+    ctx.shadowBlur = 48;
+    ctx.shadowOffsetX = 6;
+    ctx.shadowOffsetY = 14;
+    ctx.fillStyle = pal.frame;
+    roundedRect(fX, fY, fW, fH, fR);
+    ctx.fill();
+    ctx.restore();
+
+    ctx.fillStyle = pal.frame;
+    roundedRect(fX, fY, fW, fH, fR);
+    ctx.fill();
+
+    // Zona da foto: margem em todos os lados, ocupa ~65% da largura
+    const photoMargin = Math.round(fH * 0.05);
+    const pX = fX + photoMargin;
+    const pY = fY + photoMargin;
+    const pW = Math.round(fW * 0.63);
+    const pH = fH - photoMargin * 2;
+
+    ctx.fillStyle = pal.inner;
+    ctx.fillRect(pX, pY, pW, pH);
+
+    const img = AppState.get('loadedImage');
+    if (img) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(pX, pY, pW, pH);
+      ctx.clip();
+      ctx.translate(pX + pW / 2, pY + pH / 2);
+      ctx.rotate(rotation * Math.PI / 180);
+      const iR = img.naturalWidth / img.naturalHeight;
+      const fRatio = pW / pH;
+      let dW, dH;
+      if (iR > fRatio) {
+        dH = pH * 1.05;
+        dW = dH * iR;
+      } else {
+        dW = pW * 1.05;
+        dH = dW / iR;
       }
-      deferredInstallPrompt.prompt();
-      const choice = await deferredInstallPrompt.userChoice;
-      setStatus(choice.outcome === 'accepted' ? 'Instalação iniciada.' : 'Instalação cancelada.');
-      deferredInstallPrompt = null;
-      installBtn.hidden = true;
+      ctx.drawImage(img, -dW / 2, -dH / 2, dW, dH);
+      ctx.restore();
+    }
+
+    ctx.strokeStyle = 'rgba(0,0,0,.08)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(pX, pY, pW, pH);
+
+    // Fita
+    if (showTape) {
+      drawTape(pX + 60, pY - 24, 155, 44, -8);
+      drawTape(pX + pW - 200, pY - 18, 140, 40, 7);
+    }
+
+    // Zona de texto — lateral direita (o "espaço branco" da Polaroid paisagem)
+    const tX = pX + pW + Math.round(fW * 0.03);
+    const tMaxW = fX + fW - tX - photoMargin;
+    const tZoneY = fY;
+    const tZoneH = fH;
+
+    // Linha divisória
+    ctx.strokeStyle = 'rgba(0,0,0,.04)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(pX + pW, fY + photoMargin);
+    ctx.lineTo(pX + pW, fY + fH - photoMargin);
+    ctx.stroke();
+
+    // Título
+    ctx.fillStyle = pal.ink;
+    ctx.textAlign = 'left';
+    const titleY = tZoneY + Math.round(tZoneH * 0.16);
+    ctx.font = fonts.title;
+    // Wrap do título para caber no painel lateral
+    wrapText((document.getElementById('titleText').value || 'Minha Polaroid').trim(), tX, titleY, tMaxW, 58);
+
+    let textCursor = titleY + Math.round(tZoneH * 0.22);
+    ctx.fillStyle = pal.inkMuted;
+    ctx.font = fonts.body;
+
+    if (note) {
+      const used = wrapText(note, tX, textCursor, tMaxW, fonts.lineH);
+      textCursor += used * fonts.lineH + 10;
+    }
+
+    lines.forEach(line => {
+      wrapText(line, tX, textCursor, tMaxW, fonts.lineH);
+      textCursor += fonts.lineH - 2;
     });
-    resetBtn.addEventListener('click', resetApp);
 
-    ['dragenter','dragover'].forEach(evt => dropzone.addEventListener(evt, (e) => { e.preventDefault(); e.stopPropagation(); dropzone.classList.add('dragover'); }));
-    ['dragleave','drop'].forEach(evt => dropzone.addEventListener(evt, (e) => { e.preventDefault(); e.stopPropagation(); dropzone.classList.remove('dragover'); }));
-    dropzone.addEventListener('drop', async (e) => { const files = e.dataTransfer?.files; try { await handleDroppedFiles(files); } catch (err) { setStatus(`Erro no drag & drop: ${err.message}`); } });
-    dropzone.addEventListener('click', (e) => { if (e.target !== imageInput) imageInput.click(); });
+    if (!note && !lines.length) {
+      ctx.fillText('Selecione tags…', tX, textCursor);
+    }
 
-    [titleText, customText, fontSelect, rotation, frameTone, outputOrientation, locationFormat, isWhatsappImage, showTape, effectSepia, effectGrain, effectStamp, effectDust].forEach(el => {
-      el.addEventListener('input', () => { if (loadedImage) renderPolaroid(); else if (el === outputOrientation) renderPlaceholder(); });
-      el.addEventListener('change', async () => { if (!loadedImage) { if (el === outputOrientation) renderPlaceholder(); return; } await hydrateStateAndRender({ sourceMode: googlePhotosUrl.value.trim() ? 'google photos link' : 'upload local' }); });
-    });
-    [geoProvider, googleApiKey].forEach(el => el.addEventListener('change', async () => { if (!loadedImage) return; await hydrateStateAndRender({ sourceMode: googlePhotosUrl.value.trim() ? 'google photos link' : 'upload local' }); }));
-    tagInputs.forEach(input => input.addEventListener('change', () => { if (loadedImage) renderPolaroid(); }));
-    presetButtons.forEach(button => button.addEventListener('click', () => { applyPreset(button.dataset.preset); if (loadedImage) { renderPolaroid(); updateInspector({ sourceMode: googlePhotosUrl.value.trim() ? 'google photos link' : 'upload local', note: `Preset aplicado: ${button.dataset.preset}.` }); } else { setStatus(`Preset preparado: ${button.dataset.preset}.`); } }));
+    // Carimbo
+    if (effectStamp) {
+      drawStamp(fX + fW - Math.round(fW * 0.1), fY + fH - Math.round(fH * 0.12));
+    }
+  }
 
-    window.addEventListener('beforeinstallprompt', (event) => {
-      event.preventDefault();
-      deferredInstallPrompt = event;
-      installBtn.hidden = false;
-      setStatus('App pronto para instalação.');
-    });
+  /* Placeholder quando não há imagem */
+  function renderPlaceholder() {
+    const isLandscape = document.getElementById('outputOrientation').value === 'landscape';
+    canvas.width  = isLandscape ? 1500 : 1200;
+    canvas.height = isLandscape ? 1000 : 1500;
 
-    window.addEventListener('appinstalled', () => {
-      deferredInstallPrompt = null;
-      installBtn.hidden = true;
-      setStatus('App instalado com sucesso.');
-    });
+    const pal = palette(document.getElementById('frameTone').value);
+    drawPaperBackground(pal);
 
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', async () => {
-        try {
-          await navigator.serviceWorker.register('./sw.js');
-        } catch (error) {
-          console.error('Falha ao registrar service worker:', error);
+    ctx.fillStyle = 'rgba(255,255,255,.3)';
+    const fX = Math.round(canvas.width * 0.06);
+    const fY = Math.round(canvas.height * 0.05);
+    const fW = Math.round(canvas.width * 0.88);
+    const fH = Math.round(canvas.height * 0.9);
+    ctx.fillStyle = pal.frame;
+    roundedRect(fX, fY, fW, fH, 6);
+    ctx.fill();
+
+    const photoMargin = Math.round(fW * 0.045);
+    const pX = fX + photoMargin;
+    const pY = fY + photoMargin;
+    const pW = isLandscape ? Math.round(fW * 0.63) : fW - photoMargin * 2;
+    const pH = isLandscape ? fH - photoMargin * 2 : Math.round(fH * 0.68);
+
+    ctx.fillStyle = pal.inner;
+    ctx.fillRect(pX, pY, pW, pH);
+
+    ctx.fillStyle = 'rgba(0,0,0,.12)';
+    ctx.font = `600 ${isLandscape ? 42 : 48}px "Courier Prime", monospace`;
+    ctx.textAlign = 'center';
+    ctx.fillText('📷  solte uma memória aqui', pX + pW / 2, pY + pH / 2 - 10);
+    ctx.font = `400 ${isLandscape ? 22 : 26}px "Courier Prime", monospace`;
+    ctx.fillStyle = 'rgba(0,0,0,.07)';
+    ctx.fillText('Arraste & solte ou clique no painel', pX + pW / 2, pY + pH / 2 + 44);
+  }
+
+  /* Ponto de entrada principal */
+  async function render() {
+    const img = AppState.get('loadedImage');
+    if (!img) return renderPlaceholder();
+
+    const isLandscape = document.getElementById('outputOrientation').value === 'landscape';
+
+    // Ajustar canvas ao modo
+    if (isLandscape) {
+      canvas.width  = 1500;
+      canvas.height = 1000;
+    } else {
+      canvas.width  = 1200;
+      canvas.height = 1500;
+    }
+
+    UI.setDimensions(canvas.width, canvas.height);
+
+    const pal   = palette(document.getElementById('frameTone').value);
+    const fonts = typography(document.getElementById('fontSelect').value);
+    const exif  = AppState.get('exifData');
+    const loc   = AppState.get('resolvedLocation');
+    const isWA  = document.getElementById('isWhatsappImage').checked;
+    const fname = AppState.get('selectedFile')?.name || '';
+
+    // Construir linhas de metadados
+    const checkedTags = Array.from(document.querySelectorAll('#tagList input:checked')).map(i => i.value);
+    const lines = [];
+    for (const tag of checkedTags) {
+      switch (tag) {
+        case 'DateTimeOriginal': {
+          const v = Formatters.effectiveDate(exif, fname, isWA);
+          if (v) lines.push(`Data: ${v}`);
+          break;
         }
+        case 'Make':        if (exif.Make)       lines.push(`Marca: ${exif.Make}`);                        break;
+        case 'Model':       if (exif.Model)      lines.push(`Câmera: ${exif.Model}`);                      break;
+        case 'LensModel':   if (exif.LensModel)  lines.push(`Lente: ${exif.LensModel}`);                   break;
+        case 'ISO':         if (exif.ISO)        lines.push(`ISO: ${exif.ISO}`);                            break;
+        case 'FNumber': {
+          const v = Formatters.fNumber(exif.FNumber);
+          if (v) lines.push(`Abertura: ${v}`);
+          break;
+        }
+        case 'ExposureTime': {
+          const v = Formatters.exposure(exif.ExposureTime);
+          if (v) lines.push(`Exposição: ${v}`);
+          break;
+        }
+        case 'FocalLength': {
+          const v = Formatters.focalLength(exif.FocalLength);
+          if (v) lines.push(`Focal: ${v}`);
+          break;
+        }
+        case 'GPS':
+          if (!isWA) {
+            const v = Formatters.gps(exif.latitude, exif.longitude);
+            if (v) lines.push(`GPS: ${v}`);
+          }
+          break;
+        case 'ResolvedLocation': {
+          const v = Formatters.resolvedLocation(loc, document.getElementById('locationFormat').value, isWA);
+          if (v) lines.push(`Local: ${v}`);
+          break;
+        }
+      }
+    }
+
+    const note = document.getElementById('customText').value.trim();
+    const rotation = Number(document.getElementById('rotation').value || 0);
+
+    const opts = {
+      showTape:    document.getElementById('showTape').checked,
+      effectStamp: document.getElementById('effectStamp').checked,
+      rotation,
+    };
+
+    // Fundo
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawPaperBackground(pal);
+
+    // Render principal
+    if (isLandscape) renderLandscape(pal, fonts, lines, note, opts);
+    else             renderPortrait(pal, fonts, lines, note, opts);
+
+    // Efeitos pós-processamento
+    if (document.getElementById('effectSepia').checked) applySepia();
+    if (document.getElementById('effectGrain').checked) applyGrain();
+    if (document.getElementById('effectDust').checked)  applyDust();
+  }
+
+  return { render, renderPlaceholder };
+})();
+
+/* ═══════════════════════════════════════════════════════════
+   MÓDULO: Inspector
+═══════════════════════════════════════════════════════════ */
+const Inspector = (() => {
+  const statsEl  = document.getElementById('metadataStats');
+  const badgeEl  = document.getElementById('sourceBadge');
+
+  function update(extra = {}) {
+    const exif   = AppState.get('exifData');
+    const loc    = AppState.get('resolvedLocation');
+    const isWA   = document.getElementById('isWhatsappImage').checked;
+    const fname  = AppState.get('selectedFile')?.name || '';
+    const locFmt = document.getElementById('locationFormat').value;
+
+    const items = [
+      ['Arquivo',    fname || '—'],
+      ['Modo',       extra.mode || '—'],
+      ['Orientação', document.getElementById('outputOrientation').value === 'landscape' ? 'Paisagem' : 'Retrato'],
+      ['Data',       Formatters.effectiveDate(exif, fname, isWA)],
+      ['Local',      Formatters.resolvedLocation(loc, locFmt, isWA) || '—'],
+      ['Câmera',     exif.Model || '—'],
+      ['ISO',        exif.ISO ? String(exif.ISO) : '—'],
+      ['Abertura',   Formatters.fNumber(exif.FNumber) || '—'],
+      ['Exposição',  Formatters.exposure(exif.ExposureTime) || '—'],
+      ['GPS',        isWA ? 'oculto (WhatsApp)' : (Formatters.gps(exif.latitude, exif.longitude) || '—')],
+      ['Geocoding',  loc?.provider || '—'],
+    ];
+
+    statsEl.innerHTML = items
+      .map(([label, value]) => `<div class="stat"><b>${label}</b><span>${value}</span></div>`)
+      .join('');
+
+    badgeEl.textContent = extra.mode || 'sem fonte';
+
+    UI.setHint(extra.hint || (
+      isWA
+        ? 'Modo WhatsApp: localização desconhecida, data inferida do nome do arquivo.'
+        : 'OSM é o geocoder padrão. Se falhar, usa Google Maps automaticamente.'
+    ));
+  }
+
+  return { update };
+})();
+
+/* ═══════════════════════════════════════════════════════════
+   MÓDULO: Carregamento de imagem
+═══════════════════════════════════════════════════════════ */
+const ImageLoader = (() => {
+  async function loadFile(file) {
+    AppState.set('selectedFile', file);
+    AppState.set('exifData', {});
+    AppState.set('resolvedLocation', null);
+
+    UI.setStatus('Lendo EXIF…');
+    UI.showSpinner(true);
+
+    const blobUrl = URL.createObjectURL(file);
+
+    try {
+      // Ler EXIF
+      let exif = {};
+      try {
+        exif = (await exifr.parse(file, { tiff: true, exif: true, gps: true, translateValues: false })) || {};
+      } catch (exifErr) {
+        console.warn('EXIF não disponível:', exifErr.message);
+      }
+      AppState.set('exifData', exif);
+
+      // Carregar imagem
+      const img = await new Promise((resolve, reject) => {
+        const el = new Image();
+        el.onload  = () => resolve(el);
+        el.onerror = () => reject(new Error('Não foi possível carregar a imagem.'));
+        el.src = blobUrl;
       });
-    }
+      AppState.set('loadedImage', img);
 
-    function runSelfTests() {
-      console.assert(isLikelyDirectImageUrl('https://lh3.googleusercontent.com/abc=w2000') === true, 'Teste link direto');
-      console.assert(isLikelyDirectImageUrl('https://photos.app.goo.gl/xyz') === false, 'Teste link compartilhado');
-      console.assert(typeof formatDateOnly(new Date(2024, 2, 17)) === 'string', 'Teste data simples');
-      console.assert(parseWhatsappDateFromFilename('IMG-20240317-WA0001.jpg') instanceof Date, 'Teste WhatsApp');
-      outputOrientation.value = 'landscape';
-      console.assert(getCanvasSpec().width === 1700 && getCanvasSpec().height === 1400, 'Teste paisagem');
-      outputOrientation.value = 'portrait';
-      console.assert(getCanvasSpec().width === 1400 && getCanvasSpec().height === 1700, 'Teste retrato');
-    }
+      // Geocoding
+      UI.setStatus('Obtendo localização…');
+      const provider = document.getElementById('geoProvider').value;
+      const isWA     = document.getElementById('isWhatsappImage').checked;
+      try {
+        const loc = await Geocoding.resolve(exif.latitude, exif.longitude, provider, isWA);
+        AppState.set('resolvedLocation', loc);
+      } catch (geoErr) {
+        AppState.set('resolvedLocation', { error: geoErr.message });
+      }
 
-    runSelfTests();
-    resetApp();
-  </script>
+      // Renderizar
+      await Renderer.render();
+      Inspector.update({ mode: 'upload local', hint: `Arquivo carregado: ${file.name}` });
+      UI.setStatus(`Pronto — ${file.name}`, 'ok');
+      UI.setDownloadEnabled(true);
+
+    } catch (err) {
+      UI.showToast(`Erro: ${err.message}`);
+      UI.setStatus(`Erro ao carregar imagem`, 'err');
+      Renderer.renderPlaceholder();
+    } finally {
+      URL.revokeObjectURL(blobUrl);
+      UI.showSpinner(false);
+    }
+  }
+
+  return { loadFile };
+})();
+
+/* ═══════════════════════════════════════════════════════════
+   MÓDULO: Presets
+═══════════════════════════════════════════════════════════ */
+const Presets = (() => {
+  const definitions = {
+    classic:   { fontSelect: 'default', frameTone: 'warm',     showTape: true,  effectSepia: false, effectGrain: false, effectStamp: false, effectDust: false, rotation: -4 },
+    scrapbook: { fontSelect: 'hand',    frameTone: 'cream',    showTape: true,  effectSepia: false, effectGrain: true,  effectStamp: false, effectDust: true,  rotation: -7 },
+    cinema:    { fontSelect: 'type',    frameTone: 'charcoal', showTape: false, effectSepia: true,  effectGrain: true,  effectStamp: true,  effectDust: true,  rotation: -2 },
+    summer:    { fontSelect: 'clean',   frameTone: 'white',    showTape: true,  effectSepia: true,  effectGrain: false, effectStamp: false, effectDust: false, rotation: 3  },
+  };
+
+  function apply(name) {
+    const p = definitions[name];
+    if (!p) return;
+    document.getElementById('fontSelect').value  = p.fontSelect;
+    document.getElementById('frameTone').value   = p.frameTone;
+    document.getElementById('showTape').checked  = p.showTape;
+    document.getElementById('effectSepia').checked  = p.effectSepia;
+    document.getElementById('effectGrain').checked  = p.effectGrain;
+    document.getElementById('effectStamp').checked  = p.effectStamp;
+    document.getElementById('effectDust').checked   = p.effectDust;
+    document.getElementById('rotation').value    = p.rotation;
+    document.getElementById('rotationVal').textContent = `${p.rotation}°`;
+
+    // Highlight do preset activo
+    document.querySelectorAll('[data-preset]').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.preset === name);
+    });
+  }
+
+  return { apply };
+})();
+
+/* ═══════════════════════════════════════════════════════════
+   INICIALIZAÇÃO E EVENT LISTENERS
+═══════════════════════════════════════════════════════════ */
+
+// Dropzone: drag & drop
+const dropzone   = document.getElementById('dropzone');
+const imageInput = document.getElementById('imageInput');
+
+['dragenter', 'dragover'].forEach(evt =>
+  dropzone.addEventListener(evt, e => { e.preventDefault(); e.stopPropagation(); dropzone.classList.add('dragover'); })
+);
+['dragleave', 'drop'].forEach(evt =>
+  dropzone.addEventListener(evt, e => { e.preventDefault(); e.stopPropagation(); dropzone.classList.remove('dragover'); })
+);
+dropzone.addEventListener('drop', async e => {
+  const file = e.dataTransfer?.files?.[0];
+  if (!file || !file.type.startsWith('image/')) return UI.showToast('Solte um arquivo de imagem válido.');
+  await ImageLoader.loadFile(file);
+});
+dropzone.addEventListener('click', e => { if (e.target !== imageInput) imageInput.click(); });
+imageInput.addEventListener('change', async e => {
+  const file = e.target.files?.[0];
+  if (file) await ImageLoader.loadFile(file);
+});
+
+// Botão Renderizar
+document.getElementById('generateBtn').addEventListener('click', async () => {
+  if (!AppState.get('loadedImage')) {
+    UI.showToast('Carregue uma imagem primeiro.');
+    return;
+  }
+  UI.showSpinner(true);
+  UI.setStatus('Renderizando…');
+  await Renderer.render();
+  Inspector.update({ mode: 'upload local' });
+  UI.setStatus('Renderização concluída.', 'ok');
+  UI.showSpinner(false);
+});
+
+// Botão Download
+document.getElementById('downloadBtn').addEventListener('click', () => {
+  const canvas = document.getElementById('canvas');
+  if (!AppState.get('loadedImage')) return;
+  const safe = (document.getElementById('titleText').value || 'polaroid')
+    .trim().replace(/[^a-z0-9-_]+/gi, '-').toLowerCase();
+  const orient = document.getElementById('outputOrientation').value;
+  const a = document.createElement('a');
+  a.download = `${safe || 'polaroid'}-${orient}.png`;
+  a.href = canvas.toDataURL('image/png');
+  a.click();
+  UI.setStatus('PNG gerado para download.', 'ok');
+});
+
+// Botão Reset
+document.getElementById('resetBtn').addEventListener('click', () => {
+  AppState.reset();
+  imageInput.value = '';
+  document.getElementById('titleText').value   = 'Minha Polaroid';
+  document.getElementById('customText').value  = '';
+  document.getElementById('rotation').value    = '-4';
+  document.getElementById('rotationVal').textContent = '-4°';
+  document.getElementById('outputOrientation').value = 'portrait';
+  document.getElementById('frameTone').value   = 'warm';
+  document.getElementById('fontSelect').value  = 'default';
+  document.getElementById('locationFormat').value = 'short';
+  document.getElementById('geoProvider').value = 'osm';
+  document.getElementById('isWhatsappImage').checked = false;
+  document.getElementById('showTape').checked  = true;
+  document.getElementById('effectSepia').checked  = false;
+  document.getElementById('effectGrain').checked  = false;
+  document.getElementById('effectStamp').checked  = false;
+  document.getElementById('effectDust').checked   = false;
+  document.querySelectorAll('#tagList input').forEach(el => {
+    el.checked = ['DateTimeOriginal','ResolvedLocation','Model','ISO','FNumber','ExposureTime'].includes(el.value);
+  });
+  Presets.apply('classic');
+  Renderer.renderPlaceholder();
+  Inspector.update({ mode: 'sem fonte', hint: 'Estado inicial restaurado.' });
+  UI.setDownloadEnabled(false);
+  UI.setStatus('Estado inicial restaurado.');
+  UI.setDimensions(null, null);
+});
+
+// Slider de rotação
+document.getElementById('rotation').addEventListener('input', e => {
+  document.getElementById('rotationVal').textContent = `${e.target.value}°`;
+  if (AppState.get('loadedImage')) Renderer.render();
+  else Renderer.renderPlaceholder();
+});
+
+// Presets
+document.querySelectorAll('[data-preset]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    Presets.apply(btn.dataset.preset);
+    if (AppState.get('loadedImage')) Renderer.render();
+    else Renderer.renderPlaceholder();
+  });
+});
+
+// Controlos que re-renderizam ao mudar
+const liveControls = [
+  'titleText', 'customText', 'fontSelect', 'frameTone',
+  'outputOrientation', 'locationFormat',
+  'showTape', 'effectSepia', 'effectGrain', 'effectStamp', 'effectDust', 'isWhatsappImage',
+];
+liveControls.forEach(id => {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.addEventListener('input',  () => { if (AppState.get('loadedImage')) Renderer.render(); else Renderer.renderPlaceholder(); });
+  el.addEventListener('change', async () => {
+    if (!AppState.get('loadedImage')) { Renderer.renderPlaceholder(); return; }
+    // Se mudou o geocoding ou WhatsApp mode, re-resolve localização
+    if (id === 'geoProvider' || id === 'isWhatsappImage') {
+      const exif = AppState.get('exifData');
+      const isWA = document.getElementById('isWhatsappImage').checked;
+      try {
+        const loc = await Geocoding.resolve(exif.latitude, exif.longitude, document.getElementById('geoProvider').value, isWA);
+        AppState.set('resolvedLocation', loc);
+      } catch (e) {
+        AppState.set('resolvedLocation', { error: e.message });
+      }
+      Inspector.update({ mode: 'upload local' });
+    }
+    Renderer.render();
+  });
+});
+
+// Tags EXIF
+document.querySelectorAll('#tagList input').forEach(el => {
+  el.addEventListener('change', () => { if (AppState.get('loadedImage')) Renderer.render(); });
+});
+
+// PWA install
+let deferredInstall = null;
+const installBtn = document.getElementById('installBtn');
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredInstall = e;
+  installBtn.hidden = false;
+});
+installBtn.addEventListener('click', async () => {
+  if (!deferredInstall) return;
+  deferredInstall.prompt();
+  const { outcome } = await deferredInstall.userChoice;
+  UI.setStatus(outcome === 'accepted' ? 'App instalado com sucesso.' : 'Instalação cancelada.');
+  deferredInstall = null;
+  installBtn.hidden = true;
+});
+window.addEventListener('appinstalled', () => { deferredInstall = null; installBtn.hidden = true; });
+
+// Service Worker
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', async () => {
+    try { await navigator.serviceWorker.register('./sw.js'); }
+    catch (err) { console.warn('SW não registado:', err); }
+  });
+}
+
+// Arranque
+Renderer.renderPlaceholder();
+Inspector.update({ mode: 'sem fonte' });
+</script>
 </body>
 </html>
