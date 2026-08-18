@@ -1,0 +1,56 @@
+Vintage Photo Generator
+Copyright (c) 2026 Ruy Sabino Pereira
+Licensed under the MIT License (see LICENSE).
+
+------------------------------------------------------------------------
+1. Marcas registradas / Trademarks
+------------------------------------------------------------------------
+"Polaroid" é marca registrada da Polaroid IP B.V. Este projeto NÃO é
+afiliado, patrocinado ou endossado pela Polaroid nem por qualquer outra
+fabricante de câmeras instantâneas. Termos como "instantânea", "retrô" e
+"vintage" são usados de forma puramente descritiva do estilo visual.
+
+"Polaroid" is a registered trademark of Polaroid IP B.V. This project is
+not affiliated with, sponsored by, or endorsed by Polaroid or any other
+instant-camera manufacturer.
+
+------------------------------------------------------------------------
+2. Software de terceiros / Third-party software
+------------------------------------------------------------------------
+exifr 7.1.3 — MIT License
+  Copyright (c) 2020 Mike Kovařík, Mutiny.cz
+  https://github.com/MikeKovarik/exifr
+  Cópia local: vendor/exifr-7.1.3.lite.umd.js
+  Texto da licença: vendor/exifr-LICENSE.txt
+
+------------------------------------------------------------------------
+3. Fontes / Fonts (SIL Open Font License 1.1)
+------------------------------------------------------------------------
+DM Serif Display — Copyright (c) Colophon Foundry
+Caveat — Copyright (c) Impallari Type
+Special Elite — Copyright (c) Astigmatic (AOETI)
+Courier Prime — Copyright (c) Quote-Unquote Apps
+
+Todas as fontes são distribuídas sob a SIL Open Font License, Versão 1.1
+(texto completo em fonts/OFL.txt) e são auto-hospedadas em fonts/ — o app
+não faz nenhuma requisição a fonts.googleapis.com ou fonts.gstatic.com.
+
+------------------------------------------------------------------------
+4. Dados de geocodificação / Geocoding data
+------------------------------------------------------------------------
+A geocodificação reversa usa a API pública Nominatim do OpenStreetMap.
+Dados © OpenStreetMap contributors, disponíveis sob a Open Database
+License (ODbL 1.0): https://www.openstreetmap.org/copyright
+
+O uso deve respeitar a Nominatim Usage Policy
+(https://operations.osmfoundation.org/policies/nominatim/): máximo de
+1 requisição por segundo, sem uso em massa e com atribuição visível —
+exibida no rodapé do aplicativo.
+
+------------------------------------------------------------------------
+5. Conteúdo do usuário / User content
+------------------------------------------------------------------------
+Todo o processamento de imagens ocorre no navegador. Nenhuma foto é
+enviada a servidores do projeto. Apenas as coordenadas GPS (quando
+presentes no EXIF e com geocodificação ativada) são enviadas ao
+Nominatim para conversão em endereço.

@@ -1,7 +1,7 @@
 {
-  "name": "Polaroid Generator 4.0",
-  "short_name": "Polaroid 4.0",
-  "description": "Crie polaroids retrô com EXIF, localização, presets, Google Photos e exportação em PNG.",
+  "name": "Vintage Photo Generator 5.1",
+  "short_name": "Vintage Photo",
+  "description": "Crie fotos instantâneas retrô com EXIF, localização, presets e exportação em PNG. Projeto independente, sem afiliação a marcas.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

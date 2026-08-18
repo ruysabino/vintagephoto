@@ -3,22 +3,27 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Polaroid Generator 5.1</title>
-<meta name="description" content="Gerador de imagens estilo Polaroid com EXIF, GPS e efeitos retrô."/>
+<title>Vintage Photo Generator 5.1</title>
+<meta name="description" content="Gerador de fotos instantâneas retrô com EXIF, GPS e efeitos de filme. Projeto independente."/>
 <meta name="theme-color" content="#1a1008"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
-<meta name="apple-mobile-web-app-title" content="Polaroid"/>
+<meta name="apple-mobile-web-app-title" content="Vintage Photo"/>
 <meta name="mobile-web-app-capable" content="yes"/>
 <link rel="manifest" href="manifest.webmanifest"/>
 <link rel="icon" type="image/svg+xml" href="favicon.svg"/>
 <link rel="apple-touch-icon" href="icon-512.png"/>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Caveat:wght@400;600&family=Special+Elite&family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/exifr/dist/lite.umd.js"></script>
+<script src="vendor/exifr-7.1.3.lite.umd.js"></script>
 
 <style>
+/* Fontes auto-hospedadas (SIL OFL 1.1) — sem chamadas ao Google Fonts */
+@font-face{font-family:'Caveat';font-style:normal;font-weight:400;font-display:swap;src:url('fonts/Caveat-400-normal.woff2') format('woff2');}
+@font-face{font-family:'Caveat';font-style:normal;font-weight:600;font-display:swap;src:url('fonts/Caveat-600-normal.woff2') format('woff2');}
+@font-face{font-family:'Courier Prime';font-style:normal;font-weight:400;font-display:swap;src:url('fonts/CourierPrime-400-normal.woff2') format('woff2');}
+@font-face{font-family:'Courier Prime';font-style:normal;font-weight:700;font-display:swap;src:url('fonts/CourierPrime-700-normal.woff2') format('woff2');}
+@font-face{font-family:'DM Serif Display';font-style:italic;font-weight:400;font-display:swap;src:url('fonts/DMSerifDisplay-400-italic.woff2') format('woff2');}
+@font-face{font-family:'DM Serif Display';font-style:normal;font-weight:400;font-display:swap;src:url('fonts/DMSerifDisplay-400-normal.woff2') format('woff2');}
+@font-face{font-family:'Special Elite';font-style:normal;font-weight:400;font-display:swap;src:url('fonts/SpecialElite-400-normal.woff2') format('woff2');}
 /* ─── Design tokens ─────────────────────────── */
 :root{
   --bg0:#1a1008;--bg1:#241708;--bg2:#2e1e0a;
@@ -185,8 +190,8 @@ canvas{display:block;max-width:100%;height:auto;border-radius:4px;box-shadow:0 3
 <!-- ── HEADER ── -->
 <header class="header">
   <div>
-    <h1 class="header-title">Polaroid <em>Generator</em></h1>
-    <p class="header-sub" data-i18n="headerSub">Crie polaroids autênticas com EXIF, GPS e efeitos retrô. Moldura real com foto acima e legenda abaixo.</p>
+    <h1 class="header-title">Vintage <em>Photo Generator</em></h1>
+    <p class="header-sub" data-i18n="headerSub">Crie fotos instantâneas autênticas com EXIF, GPS e efeitos retrô. Moldura real com foto acima e legenda abaixo.</p>
     <div class="badge-row" style="margin-top:14px">
       <span class="badge" data-i18n="badgeExif">EXIF automático</span>
       <span class="badge" data-i18n="badgeGps">GPS → Localização</span>
@@ -250,7 +255,7 @@ canvas{display:block;max-width:100%;height:auto;border-radius:4px;box-shadow:0 3
     <div class="grid-2">
       <div class="field">
         <label for="titleText" data-i18n="labelTitle">Título / legenda</label>
-        <input id="titleText" type="text" value="Minha Polaroid" data-i18n-placeholder="placeholderTitle">
+        <input id="titleText" type="text" value="Minha Foto" data-i18n-placeholder="placeholderTitle">
       </div>
       <div class="field">
         <label for="fontSelect" data-i18n="labelFont">Tipografia</label>
@@ -410,6 +415,7 @@ canvas{display:block;max-width:100%;height:auto;border-radius:4px;box-shadow:0 3
       <span class="status-text" id="statusText" data-i18n="statusWaiting">Aguardando imagem…</span>
       <div class="action-row">
         <span id="dimensionBadge" class="badge" style="display:none"></span>
+        <span class="badge" style="opacity:.75">Geocodificação © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer" style="color:inherit">OpenStreetMap</a> contributors (ODbL)</span>
       </div>
     </div>
   </div>
@@ -426,7 +432,7 @@ canvas{display:block;max-width:100%;height:auto;border-radius:4px;box-shadow:0 3
       <div class="stat"><b data-i18n="inspStatus">Status</b><span data-i18n="inspNoImage">Nenhuma imagem carregada.</span></div>
     </div>
     <div class="hint-box" id="hintBox" data-i18n="hintDefault">
-      A moldura Polaroid: foto acima, espaço branco abaixo com metadados EXIF. Use ✂ Recortar para ajustar o enquadramento.
+      A moldura instantânea: foto acima, espaço branco abaixo com metadados EXIF. Use ✂ Recortar para ajustar o enquadramento.
     </div>
   </div>
 </aside>
@@ -442,7 +448,7 @@ canvas{display:block;max-width:100%;height:auto;border-radius:4px;box-shadow:0 3
 ═══════════════════════════════════════════════════════════ */
 const TRANSLATIONS = {
   pt:{
-    headerSub:'Crie polaroids autênticas com EXIF, GPS e efeitos retrô.',
+    headerSub:'Crie fotos instantâneas autênticas com EXIF, GPS e efeitos retrô.',
     badgeExif:'EXIF automático',badgeGps:'GPS → Localização',badgeFrame:'Moldura real',badgePwa:'PWA offline',
     installApp:'⊕ Instalar app',panelConfig:'Configuração',btnReset:'↺ Resetar',
     dropTitle:'Solte a foto aqui',dropSub:'ou clique para escolher um arquivo\nJPEG preserva o EXIF completo',
@@ -480,7 +486,7 @@ const TRANSLATIONS = {
     cropModeOff:'Modo recorte desativado.',
   },
   en:{
-    headerSub:'Create authentic Polaroids with EXIF, GPS and retro effects.',
+    headerSub:'Create authentic instant photos with EXIF, GPS and retro effects.',
     badgeExif:'Auto EXIF',badgeGps:'GPS → Location',badgeFrame:'Real frame',badgePwa:'PWA offline',
     installApp:'⊕ Install app',panelConfig:'Settings',btnReset:'↺ Reset',
     dropTitle:'Drop your photo here',dropSub:'or click to choose a file\nJPEG preserves full EXIF',
@@ -556,7 +562,7 @@ const TRANSLATIONS = {
     cropModeOff:'Modo recorte desactivado.',
   },
   fr:{
-    headerSub:'Créez des Polaroids authentiques avec EXIF, GPS et effets rétro.',
+    headerSub:'Créez des photos instantanées authentiques avec EXIF, GPS et effets rétro.',
     badgeExif:'EXIF auto',badgeGps:'GPS → Lieu',badgeFrame:'Vrai cadre',badgePwa:'PWA hors ligne',
     installApp:'⊕ Installer',panelConfig:'Paramètres',btnReset:'↺ Réinitialiser',
     dropTitle:'Déposez votre photo ici',dropSub:'ou cliquez pour choisir un fichier\nJPEG conserve l\'EXIF complet',
@@ -594,7 +600,7 @@ const TRANSLATIONS = {
     cropModeOff:'Mode recadrage désactivé.',
   },
   de:{
-    headerSub:'Erstelle authentische Polaroids mit EXIF, GPS und Retro-Effekten.',
+    headerSub:'Erstelle authentische Sofortbilder mit EXIF, GPS und Retro-Effekten.',
     badgeExif:'Auto-EXIF',badgeGps:'GPS → Ort',badgeFrame:'Echter Rahmen',badgePwa:'PWA offline',
     installApp:'⊕ App installieren',panelConfig:'Einstellungen',btnReset:'↺ Zurücksetzen',
     dropTitle:'Foto hier ablegen',dropSub:'oder klicken, um eine Datei zu wählen\nJPEG erhält das vollständige EXIF',
@@ -632,7 +638,7 @@ const TRANSLATIONS = {
     cropModeOff:'Zuschneidemodus deaktiviert.',
   },
   it:{
-    headerSub:'Crea Polaroid autentiche con EXIF, GPS ed effetti retrò.',
+    headerSub:'Crea foto istantanee autentiche con EXIF, GPS ed effetti retrò.',
     badgeExif:'EXIF automatico',badgeGps:'GPS → Luogo',badgeFrame:'Cornice reale',badgePwa:'PWA offline',
     installApp:'⊕ Installa app',panelConfig:'Impostazioni',btnReset:'↺ Ripristina',
     dropTitle:'Lascia cadere la foto qui',dropSub:'o clicca per scegliere un file\nJPEG preserva l\'EXIF completo',
@@ -687,8 +693,8 @@ function applyTranslations(){
     el.placeholder = t(el.getAttribute('data-i18n-placeholder'));
   });
   // update title default value only if it's a "neutral" default
-  const titleDefaults = Object.values(TRANSLATIONS).map(()=>'Minha Polaroid');
-  document.title = `Polaroid Generator 5.1 · ${currentLang.toUpperCase()}`;
+  const titleDefaults = Object.values(TRANSLATIONS).map(()=>'Minha Foto');
+  document.title = `Vintage Photo Generator 5.1 · ${currentLang.toUpperCase()}`;
 }
 
 document.getElementById('langBar').addEventListener('click', e=>{
@@ -798,36 +804,14 @@ const Formatters=(()=>{
    Geocoding
 ═══════════════════════════════════════════════════════════ */
 const Geocoding=(()=>{
-  const GKEY='AIzaSyAe-B5ewZdZQlhFqzzKfyo7go3cSZgfBzU';
-  async function fromOSM(lat,lon){
-    const r=await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1`,{headers:{Accept:'application/json'}});
-    if(!r.ok)throw new Error(`OSM HTTP ${r.status}`);
-    const d=await r.json();const a=d.address||{};
-    return{provider:'OpenStreetMap',displayName:d.display_name||null,formattedAddress:d.display_name||null,label:d.name||null,
-      city:a.city||null,town:a.town||null,village:a.village||null,municipality:a.municipality||null,county:a.county||null,
-      state:a.state||null,region:a.region||null,country:a.country||null,suburb:a.suburb||null,neighbourhood:a.neighbourhood||null,borough:a.borough||null};
-  }
-  async function fromGoogle(lat,lon){
-    const r=await fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lon}&language=pt-BR&key=${GKEY}`);
-    if(!r.ok)throw new Error(`Google HTTP ${r.status}`);
-    const d=await r.json();
-    if(d.status!=='OK'||!d.results?.length)throw new Error(`Google: ${d.status||'no result'}`);
-    const res=d.results[0];
-    const gc=(...types)=>res.address_components?.find(i=>types.every(t=>i.types.includes(t)))?.long_name||null;
-    return{provider:'Google Maps',displayName:res.formatted_address||null,formattedAddress:res.formatted_address||null,
-      label:gc('point_of_interest')||gc('establishment'),city:gc('administrative_area_level_2')||gc('locality'),
-      town:gc('sublocality_level_1'),village:null,municipality:gc('locality'),county:gc('administrative_area_level_2'),
-      state:gc('administrative_area_level_1'),region:gc('administrative_area_level_1'),country:gc('country'),
-      suburb:gc('sublocality')||gc('sublocality_level_1'),neighbourhood:gc('neighborhood'),borough:gc('administrative_area_level_3')};
-  }
   async function resolve(lat,lon,provider,isWA){
     if(isWA)return{provider:'WhatsApp override',displayName:'—'};
     if(typeof lat!=='number'||typeof lon!=='number')return null;
     if(provider==='none')return null;
     try{return await fromOSM(lat,lon);}
     catch(e1){
-      console.warn('OSM failed, trying Google…',e1.message);
-      try{return await fromGoogle(lat,lon);}
+      console.warn('OSM reverse geocoding failed', e1.message);
+      try{throw e1;}
       catch(e2){console.warn('Google also failed:',e2.message);return{error:`OSM:${e1.message}|Google:${e2.message}`};}
     }
   }
@@ -1128,7 +1112,7 @@ const Renderer=(()=>{
 
     ctx.fillStyle=pal.ink;ctx.textAlign='left';
     const titleY=tZoneY+Math.round(tZoneH*.22);
-    ctx.font=fonts.title;ctx.fillText(getTitleText()||'Polaroid',tX,titleY);
+    ctx.font=fonts.title;ctx.fillText(getTitleText()||'Vintage',tX,titleY);
 
     let cur=titleY+Math.round(tZoneH*.18);
     ctx.fillStyle=pal.inkMuted;ctx.font=fonts.body;
@@ -1172,7 +1156,7 @@ const Renderer=(()=>{
     ctx.fillStyle=pal.ink;ctx.textAlign='left';
     const tZoneH=fH;
     const titleY=fY+Math.round(tZoneH*.16);
-    ctx.font=fonts.title;wrapText(getTitleText()||'Polaroid',tX,titleY,tMaxW,58);
+    ctx.font=fonts.title;wrapText(getTitleText()||'Vintage',tX,titleY,tMaxW,58);
 
     let cur=titleY+Math.round(tZoneH*.22);
     ctx.fillStyle=pal.inkMuted;ctx.font=fonts.body;
@@ -1390,7 +1374,7 @@ document.getElementById('downloadBtn').addEventListener('click',()=>{
 
 document.getElementById('resetBtn').addEventListener('click',()=>{
   AppState.reset();imageInput.value='';
-  document.getElementById('titleText').value='Minha Polaroid';
+  document.getElementById('titleText').value='Minha Foto';
   document.getElementById('customText').value='';
   document.getElementById('stampText').value='VINTAGE';
   document.getElementById('rotation').value='-4';

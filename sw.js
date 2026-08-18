@@ -1,11 +1,19 @@
-const CACHE_NAME = "polaroid-generator-v4";
+const CACHE_NAME = "vintage-photo-generator-v5";
 const APP_ASSETS = [
   "./",
   "./index.html",
   "./manifest.webmanifest",
   "./favicon.svg",
   "./icon-192.png",
-  "./icon-512.png"
+  "./icon-512.png",
+  "./vendor/exifr-7.1.3.lite.umd.js",
+  "./fonts/Caveat-400-normal.woff2",
+  "./fonts/Caveat-600-normal.woff2",
+  "./fonts/CourierPrime-400-normal.woff2",
+  "./fonts/CourierPrime-700-normal.woff2",
+  "./fonts/DMSerifDisplay-400-normal.woff2",
+  "./fonts/DMSerifDisplay-400-italic.woff2",
+  "./fonts/SpecialElite-400-normal.woff2"
 ];
 
 self.addEventListener("install", (event) => {
@@ -30,6 +38,7 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
+  if (new URL(event.request.url).origin !== self.location.origin) return;
 
   event.respondWith(
     caches.match(event.request).then((cached) => {
